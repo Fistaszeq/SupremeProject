@@ -1,2 +1,4 @@
 # SupremeProject
-Tu będzie opis
+Projekt aplikacji budżetowej 
+Plan: 
+Brak planu
