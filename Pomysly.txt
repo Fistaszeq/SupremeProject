@@ -1,0 +1,17 @@
+(wszystko przykladowe, nie musimy używać wszystkiego)
+
+“Tabelka” do dodawania stałego/zmiennego dochodu dla każdej osoby
+
+Tabelka do dodawania wydatków:
+    -stałe wydatki - czynsz, subskrypcje, bilety miesięczne
+    -fundusze celowe - ubezpieczenia, wakacje, święta, (ew. odkładanie na jakiś większy zakup)
+    -zmienne wydatki - jedzenie, paliwo, kosmetyki, rozrywka
+    -pozostałe - poduszka finansowa, inwestowanie
+
+Planowanie wydatków:
+    -jaki % dochodu całkowitego lub dochodu każdej osoby (do wyboru) ma być skierowany na co
+    -pokazywanie szacowanego budżetu na każdy dzień/tydzień/inne
+
+Śledzenie wydatków:
+    -dodawanie wydatków na bieżąco (z kategoriami)
+    -feedback na bieżąco - jaki % zaplanowanego budżetu został wydany - jakaś słowna notatka
