@@ -15,3 +15,4 @@ Planowanie wydatków:
 Śledzenie wydatków:
     -dodawanie wydatków na bieżąco (z kategoriami)
     -feedback na bieżąco - jaki % zaplanowanego budżetu został wydany - jakaś słowna notatka
+
