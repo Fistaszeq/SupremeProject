@@ -13,7 +13,7 @@ ctk.set_default_color_theme("blue")
 
 # ── Import komponentów GUI (tworzonych przez Maję) ──────────
 # UWAGA: importujemy zmienne z gui.py, NIE odpala mainloop
-import gui  # to wykona kod w gui.py i stworzy okno
+import gui.gui as gui  # to wykona kod w gui.py i stworzy okno
 
 # ── Panel Manager ───────────────────────────────────────────
 frames = {
