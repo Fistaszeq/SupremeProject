@@ -1,4 +1,4 @@
-import customtkinter as ctk
+from . import customtkinter as ctk
 
 app = ctk.CTk()
 app.geometry("1920x1080")

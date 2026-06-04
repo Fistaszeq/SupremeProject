@@ -1,229 +1,275 @@
 import calendar
-from datetime import date
-from data_manager import load_transactions, load_goals, get_transactions_by_month, load_categories
+from datetime import date, datetime, timedelta
+from data_manager import (
+    load_transactions,
+    load_goals,
+    load_settings,
+    get_transactions_by_month,
+    load_categories,
+)
+
+
+def format_currency(amount: float) -> str:
+    """
+    Formatuje kwotę w formacie polskim: 1234567.89 → "1 234 567,89 zł".
+    Separator tysięcy: spacja. Dziesiętny: przecinek. Symbol na końcu.
+    Ujemne: "-1 234,50 zł".
+    """
+    try:
+        # Zaokrąglij do 2 miejsc po przecinku, aby uniknąć błędów zmiennoprzecinkowych
+        rounded = round(amount, 2)
+        if rounded < 0:
+            sign = "-"
+            rounded = -rounded
+        else:
+            sign = ""
+
+        # Rozdziel na część całkowitą i ułamkową
+        integer_part, _, frac_part = f"{rounded:.2f}".partition(".")
+
+        # Grupowanie cyfr po 3 od prawej z użyciem spacji
+        int_str = ""
+        for i, ch in enumerate(reversed(integer_part)):
+            if i > 0 and i % 3 == 0:
+                int_str = " " + int_str
+            int_str = ch + int_str
+
+        return f"{sign}{int_str},{frac_part} zł"
+    except Exception:
+        return "0,00 zł"
 
 
 def get_monthly_summary(year: int, month: int) -> dict:
-    """
-    Oblicza podsumowanie miesięczne: przychody, wydatki, bilans
-    oraz wydatki pogrupowane według kategorii (posortowane malejąco).
-    """
-    try:
-        transactions = get_transactions_by_month(year, month)
-    except Exception as e:
-        print(f"Błąd pobierania transakcji dla {year}-{month:02d}: {e}")
-        return {"income": 0.0, "expense": 0.0, "balance": 0.0, "by_category": []}
-
+    """Zwraca podsumowanie miesięczne: przychody, wydatki, bilans oraz wydatki wg kategorii."""
+    transactions = get_transactions_by_month(year, month)
     income = 0.0
     expense = 0.0
     category_totals = {}
 
     for t in transactions:
-        if t["type"] == "income":
-            income += t["amount"]
-        elif t["type"] == "expense":
-            expense += t["amount"]
-            cat_id = t["category_id"]
-            category_totals[cat_id] = category_totals.get(cat_id, 0.0) + t["amount"]
+        amt = t.get("amount", 0.0)
+        if t.get("type") == "income":
+            income += amt
+        elif t.get("type") == "expense":
+            expense += amt
+            cid = t.get("category_id")
+            if cid is not None:
+                category_totals[cid] = category_totals.get(cid, 0.0) + amt
 
-    # Przekształć słownik na listę i posortuj malejąco po sumie
-    by_category = [
-        {"category_id": cat_id, "total": total}
-        for cat_id, total in category_totals.items()
-    ]
-    by_category.sort(key=lambda x: x["total"], reverse=True)
-
-    balance = income - expense
+    by_category = sorted(
+        [{"category_id": k, "total": v} for k, v in category_totals.items()],
+        key=lambda x: x["total"],
+        reverse=True,
+    )
 
     return {
         "income": income,
         "expense": expense,
-        "balance": balance,
-        "by_category": by_category
+        "balance": income - expense,
+        "by_category": by_category,
+        "transaction_count": len(transactions),
     }
 
 
-def get_today_budget(monthly_budget: float, year: int, month: int) -> dict:
+def get_today_budget() -> dict:
     """
-    Oblicza, ile można dziś wydać na podstawie miesięcznego budżetu.
-    Zwraca słownik z kluczami: daily_budget, today_spent, remaining_today, status.
+    Oblicza budżet na dzisiejszy dzień.
+    Uwzględnia miesięczny limit, dni miesiąca i dotychczasowe wydatki.
     """
-    try:
-        # Liczba dni w danym miesiącu
-        days_in_month = calendar.monthrange(year, month)[1]
-        daily_budget = monthly_budget / days_in_month if days_in_month > 0 else 0.0
+    settings = load_settings()
+    monthly_budget = settings.get("monthly_budget", 3000.0)
+    today = date.today()
+    days_in_month = calendar.monthrange(today.year, today.month)[1]
+    daily_budget = monthly_budget / days_in_month if days_in_month > 0 else 0.0
 
-        # Pobranie dzisiejszej daty
-        today = date.today()
-        today_spent = 0.0
+    transactions_month = get_transactions_by_month(today.year, today.month)
+    transactions_today = [t for t in transactions_month if t["date"] == str(today) and t["type"] == "expense"]
+    today_spent = sum(t["amount"] for t in transactions_today)
 
-        # Jeśli podany miesiąc jest bieżącym, policz dzisiejsze wydatki
-        if year == today.year and month == today.month:
-            transactions = get_transactions_by_month(year, month)
-            for t in transactions:
-                if t["type"] == "expense" and t["date"] == today.isoformat():
-                    today_spent += t["amount"]
-        else:
-            # Jeśli miesiąc nie jest bieżący, today_spent wynosi 0
-            pass
+    month_expense = sum(t["amount"] for t in transactions_month if t["type"] == "expense")
+    remaining_today = daily_budget - today_spent
+    percent_of_daily = (today_spent / daily_budget * 100) if daily_budget > 0 else 0.0
+    month_percent = (month_expense / monthly_budget * 100) if monthly_budget > 0 else 0.0
 
-        remaining_today = daily_budget - today_spent
-        status = "ok" if remaining_today >= 0 else "over"
+    if remaining_today >= daily_budget * 0.4:
+        status = "ok"
+    elif remaining_today >= 0:
+        status = "warning"
+    else:
+        status = "danger"
 
-        return {
-            "daily_budget": daily_budget,
-            "today_spent": today_spent,
-            "remaining_today": remaining_today,
-            "status": status
-        }
-    except Exception as e:
-        print(f"Błąd w get_today_budget: {e}")
-        return {
-            "daily_budget": 0.0,
-            "today_spent": 0.0,
-            "remaining_today": 0.0,
-            "status": "ok"
-        }
+    return {
+        "daily_budget": daily_budget,
+        "today_spent": today_spent,
+        "remaining_today": remaining_today,
+        "percent_of_daily": percent_of_daily,
+        "month_expense": month_expense,
+        "monthly_budget": monthly_budget,
+        "month_percent": month_percent,
+        "status": status,
+    }
 
 
 def forecast_month(year: int, month: int) -> dict:
     """
-    Prognozuje całkowite wydatki na koniec miesiąca na podstawie
-    średnich dziennych wydatków do dnia dzisiejszego.
+    Prognoza wydatków na koniec miesiąca na podstawie średnich dziennych wydatków.
     """
-    try:
-        today = date.today()
-        # Prognoza ma sens tylko dla bieżącego miesiąca
-        if year != today.year or month != today.month:
-            # Dla innych miesięcy zwracamy domyślne wartości
-            return {
-                "spent_so_far": 0.0,
-                "forecast_total": 0.0,
-                "daily_average": 0.0,
-                "days_left": 0
-            }
+    today = date.today()
+    days_in_month = calendar.monthrange(year, month)[1]
 
-        transactions = get_transactions_by_month(year, month)
-        spent_so_far = 0.0
+    # Dla bieżącego miesiąca bierzemy ile dni minęło, dla innych przyjmujemy cały miesiąc
+    if today.year == year and today.month == month:
+        current_day = today.day
+    else:
+        current_day = days_in_month  # cały miesiąc - brak danych dziennych
 
-        # Suma wydatków do dnia dzisiejszego (włącznie)
-        for t in transactions:
-            if t["type"] == "expense":
-                trans_date = date.fromisoformat(t["date"])
-                if trans_date <= today:
-                    spent_so_far += t["amount"]
+    transactions = get_transactions_by_month(year, month)
+    spent = sum(t["amount"] for t in transactions if t["type"] == "expense")
+    daily_avg = spent / current_day if current_day > 0 else 0.0
+    forecast = daily_avg * days_in_month
+    days_left = days_in_month - current_day
 
-        day_of_month = today.day
-        days_in_month = calendar.monthrange(year, month)[1]
-        days_left = days_in_month - day_of_month
+    settings = load_settings()
+    monthly_budget = settings.get("monthly_budget", 3000.0)
+    will_exceed = forecast > monthly_budget
+    overshoot_by = max(0.0, forecast - monthly_budget)
 
-        # Średnia dzienna na podstawie dotychczasowych dni
-        if day_of_month > 0:
-            daily_average = spent_so_far / day_of_month
-        else:
-            daily_average = 0.0
-
-        forecast_total = daily_average * days_in_month
-
-        return {
-            "spent_so_far": spent_so_far,
-            "forecast_total": forecast_total,
-            "daily_average": daily_average,
-            "days_left": days_left
-        }
-    except Exception as e:
-        print(f"Błąd w forecast_month: {e}")
-        return {
-            "spent_so_far": 0.0,
-            "forecast_total": 0.0,
-            "daily_average": 0.0,
-            "days_left": 0
-        }
-
-
-def get_savings_progress(goal_id: int) -> dict | None:
-    """
-    Oblicza postęp realizacji celu oszczędnościowego o podanym id.
-    Zwraca słownik z danymi celu lub None, jeśli cel nie istnieje.
-    """
-    try:
-        goals = load_goals()
-        for goal in goals:
-            if goal["id"] == goal_id:
-                target = goal.get("target", 0.0)
-                current = goal.get("current", 0.0)
-                percent = (current / target * 100.0) if target > 0 else 0.0
-                remaining = target - current
-                return {
-                    "name": goal.get("name", ""),
-                    "target": target,
-                    "current": current,
-                    "percent": percent,
-                    "remaining": remaining
-                }
-        return None
-    except Exception as e:
-        print(f"Błąd w get_savings_progress: {e}")
-        return None
+    return {
+        "spent_so_far": spent,
+        "forecast_total": forecast,
+        "daily_average": daily_avg,
+        "days_left": days_left,
+        "will_exceed": will_exceed,
+        "overshoot_by": overshoot_by,
+    }
 
 
 def get_category_breakdown(year: int, month: int) -> list:
     """
-    Grupuje wydatki wg kategorii, uzupełnia o nazwy, ikony i kolory,
-    oblicza udział procentowy. Wynik posortowany malejąco po kwocie.
+    Grupuje wydatki wg kategorii i zwraca listę z nazwą, ikoną, kolorem,
+    sumą i udziałem procentowym.
     """
-    try:
-        transactions = get_transactions_by_month(year, month)
-    except Exception as e:
-        print(f"Błąd pobierania transakcji: {e}")
-        return []
+    categories = {c["id"]: c for c in load_categories()}
+    transactions = get_transactions_by_month(year, month)
+    totals = {}
 
-    # Zbierz wydatki wg category_id
-    expense_by_cat = {}
-    total_expenses = 0.0
     for t in transactions:
-        if t["type"] == "expense":
-            cat_id = t["category_id"]
-            expense_by_cat[cat_id] = expense_by_cat.get(cat_id, 0.0) + t["amount"]
-            total_expenses += t["amount"]
+        if t.get("type") == "expense":
+            cid = t.get("category_id", 0)
+            totals[cid] = totals.get(cid, 0.0) + t["amount"]
 
-    # Wczytaj kategorie
-    try:
-        categories = load_categories()
-    except Exception as e:
-        print(f"Błąd ładowania kategorii: {e}")
-        return []
-
-    # Zbuduj słownik kategorii po id dla szybkiego dostępu
-    cat_dict = {c["id"]: c for c in categories}
+    total_expense = sum(totals.values())
+    if total_expense == 0:
+        total_expense = 1  # unikamy dzielenia przez zero
 
     breakdown = []
-    for cat_id, total in expense_by_cat.items():
-        cat_info = cat_dict.get(cat_id, {})
-        percent = (total / total_expenses * 100.0) if total_expenses > 0 else 0.0
+    for cid, total in sorted(totals.items(), key=lambda x: x[1], reverse=True):
+        cat = categories.get(cid, {"name": "Inne", "icon": "📦", "color": "#6B7280"})
+        percent = round(total / total_expense * 100, 1)
         breakdown.append({
-            "name": cat_info.get("name", f"Kat.{cat_id}"),
-            "icon": cat_info.get("icon", ""),
-            "color": cat_info.get("color", "#888888"),
+            "category_id": cid,
+            "name": cat["name"],
+            "icon": cat["icon"],
+            "color": cat["color"],
             "total": total,
-            "percent": percent
+            "percent": percent,
         })
 
-    # Sortuj malejąco
-    breakdown.sort(key=lambda x: x["total"], reverse=True)
     return breakdown
 
 
-def format_currency(amount: float) -> str:
+def get_last_n_months_data(n: int = 6) -> list:
     """
-    Formatuje kwotę do postaci: 1 234,50 zł.
+    Zwraca listę podsumowań dla ostatnich n miesięcy (łącznie z bieżącym).
     """
-    try:
-        # Formatowanie z dwoma miejscami po przecinku, przecinek jako separator dziesiętny
-        formatted = f"{amount:,.2f}"
-        # Zamień przecinki na spacje, kropkę na przecinek
-        formatted = formatted.replace(",", " ").replace(".", ",")
-        return f"{formatted} zł"
-    except Exception as e:
-        print(f"Błąd formatowania kwoty: {e}")
-        return "0,00 zł"
+    today = date.today()
+    month_names = ["Sty", "Lut", "Mar", "Kwi", "Maj", "Cze",
+                   "Lip", "Sie", "Wrz", "Paź", "Lis", "Gru"]
+    result = []
+    for i in range(n - 1, -1, -1):
+        month = today.month - i
+        year = today.year
+        while month <= 0:
+            month += 12
+            year -= 1
+        summary = get_monthly_summary(year, month)
+        result.append({
+            "label": month_names[month - 1],
+            "year": year,
+            "month": month,
+            "income": summary["income"],
+            "expense": summary["expense"],
+            "balance": summary["balance"],
+        })
+    return result
+
+
+def get_streak_days() -> int:
+    """
+    Zwraca liczbę kolejnych dni wstecz od dzisiaj, w których dodano
+    co najmniej jedną transakcję (dowolnego typu).
+    """
+    transactions = load_transactions()
+    dates_set = {t["date"] for t in transactions}
+    streak = 0
+    check_date = date.today()
+    while str(check_date) in dates_set:
+        streak += 1
+        check_date -= timedelta(days=1)
+    return streak
+
+
+def get_biggest_expense_this_month() -> dict | None:
+    """
+    Znajduje największy wydatek bieżącego miesiąca i zwraca informacje o nim.
+    """
+    today = date.today()
+    transactions = get_transactions_by_month(today.year, today.month)
+    expenses = [t for t in transactions if t.get("type") == "expense"]
+    if not expenses:
+        return None
+
+    biggest = max(expenses, key=lambda t: t["amount"])
+    categories = {c["id"]: c for c in load_categories()}
+    cat = categories.get(biggest.get("category_id", 0), {"name": "Inne", "icon": "📦"})
+
+    return {
+        "amount": biggest["amount"],
+        "description": biggest.get("description", ""),
+        "category_name": cat["name"],
+        "category_icon": cat["icon"],
+        "date": biggest["date"],
+    }
+
+
+def get_savings_rate(year: int, month: int) -> float:
+    """
+    Stopa oszczędności dla danego miesiąca: (dochód - wydatki) / dochód * 100%.
+    """
+    summary = get_monthly_summary(year, month)
+    income = summary["income"]
+    if income == 0:
+        return 0.0
+    return round((summary["balance"] / income) * 100, 1)
+
+
+def animate_counter(label_widget, end_value: float, format_func=None, steps=25, duration_ms=700):
+    """
+    Animuje licznik na widgetach (np. CTkLabel) od 0 do end_value.
+    label_widget.configure(text=...) aktualizuje wartość.
+    format_func powinno przyjmować jedną liczbę i zwracać napis.
+    """
+    if format_func is None:
+        format_func = str
+
+    step_delay = max(1, duration_ms // steps)
+    delta = end_value / steps if steps > 0 else 0.0
+
+    def _step(step, current):
+        if step >= steps:
+            label_widget.configure(text=format_func(end_value))
+            return
+        label_widget.configure(text=format_func(current))
+        label_widget.after(step_delay, lambda: _step(step + 1, current + delta))
+
+    _step(0, 0.0)

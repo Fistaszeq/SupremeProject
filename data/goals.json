@@ -1,0 +1,25 @@
+[
+  {
+    "id": 1,
+    "name": "jebac disa",
+    "target_amount": 100.0,
+    "current_amount": 5.0,
+    "color": "#3B82F6"
+  },
+  {
+    "id": 2,
+    "name": "majorka",
+    "target_amount": 2000.0,
+    "current_amount": 1000.0,
+    "color": "#EC4899",
+    "created_date": "2026-06-04"
+  },
+  {
+    "id": 3,
+    "name": "221",
+    "target_amount": 11.0,
+    "current_amount": 4.0,
+    "color": "#3B82F6",
+    "created_date": "2026-06-04"
+  }
+]

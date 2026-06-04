@@ -1,0 +1,58 @@
+[
+  {
+    "id": 1,
+    "name": "Jedzenie",
+    "color": "#EF4444",
+    "icon": "🍔",
+    "type": "expense"
+  },
+  {
+    "id": 2,
+    "name": "Transport",
+    "color": "#F59E0B",
+    "icon": "🚗",
+    "type": "expense"
+  },
+  {
+    "id": 3,
+    "name": "Mieszkanie",
+    "color": "#8B5CF6",
+    "icon": "🏠",
+    "type": "expense"
+  },
+  {
+    "id": 4,
+    "name": "Rozrywka",
+    "color": "#EC4899",
+    "icon": "🎮",
+    "type": "expense"
+  },
+  {
+    "id": 5,
+    "name": "Zdrowie",
+    "color": "#06B6D4",
+    "icon": "💊",
+    "type": "expense"
+  },
+  {
+    "id": 6,
+    "name": "Wynagrodzenie",
+    "color": "#10B981",
+    "icon": "💼",
+    "type": "income"
+  },
+  {
+    "id": 7,
+    "name": "Freelance",
+    "color": "#3B82F6",
+    "icon": "💻",
+    "type": "income"
+  },
+  {
+    "id": 8,
+    "name": "Inne",
+    "color": "#6B7280",
+    "icon": "📦",
+    "type": "both"
+  }
+]

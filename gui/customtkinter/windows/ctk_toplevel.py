@@ -1,5 +1,5 @@
 import tkinter
-from packaging import version
+from ...packaging import version
 import sys
 import os
 import platform
@@ -10,7 +10,7 @@ from .widgets.theme import ThemeManager
 from .widgets.scaling import CTkScalingBaseClass
 from .widgets.appearance_mode import CTkAppearanceModeBaseClass
 
-from customtkinter.windows.widgets.utility.utility_functions import pop_from_dict_by_set, check_kwargs_empty
+from .widgets.utility.utility_functions import pop_from_dict_by_set, check_kwargs_empty
 
 
 class CTkToplevel(tkinter.Toplevel, CTkAppearanceModeBaseClass, CTkScalingBaseClass):

@@ -1,0 +1,50 @@
+[
+  {
+    "id": 1,
+    "amount": 100000.0,
+    "type": "income",
+    "category_id": 4,
+    "description": "jebanie disa",
+    "date": "2026-06-04"
+  },
+  {
+    "id": 2,
+    "amount": 100.0,
+    "type": "expense",
+    "category_id": 1,
+    "description": "zakupy",
+    "date": "2026-06-04"
+  },
+  {
+    "id": 3,
+    "amount": 1000.0,
+    "type": "income",
+    "category_id": 6,
+    "description": "jazda z kurwami",
+    "date": "2026-06-04"
+  },
+  {
+    "id": 4,
+    "amount": 10.0,
+    "type": "expense",
+    "category_id": 1,
+    "description": "",
+    "date": "2026-06-04"
+  },
+  {
+    "id": 5,
+    "amount": 657.0,
+    "type": "expense",
+    "category_id": 1,
+    "description": "",
+    "date": "2026-06-04"
+  },
+  {
+    "id": 6,
+    "amount": 222.0,
+    "type": "income",
+    "category_id": 1,
+    "description": "",
+    "date": "2026-06-04"
+  }
+]

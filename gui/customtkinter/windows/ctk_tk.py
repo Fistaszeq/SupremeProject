@@ -4,13 +4,13 @@ import os
 import platform
 import ctypes
 from typing import Union, Tuple, Optional
-from packaging import version
+from ...packaging import version
 
 from .widgets.theme import ThemeManager
 from .widgets.scaling import CTkScalingBaseClass
 from .widgets.appearance_mode import CTkAppearanceModeBaseClass
 
-from customtkinter.windows.widgets.utility.utility_functions import pop_from_dict_by_set, check_kwargs_empty
+from .widgets.utility.utility_functions import pop_from_dict_by_set, check_kwargs_empty
 
 CTK_PARENT_CLASS = tkinter.Tk
 

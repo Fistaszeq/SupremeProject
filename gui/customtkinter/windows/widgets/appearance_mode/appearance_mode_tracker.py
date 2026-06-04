@@ -1,6 +1,6 @@
 import tkinter
 from typing import Callable
-import darkdetect
+from ..... import darkdetect
 
 
 class AppearanceModeTracker:
