@@ -63,4 +63,4 @@ text_left_bottom_placeholder.place(relx=0, rely=0.5)
 section_right_bottom.place(x=600, y=320)
 text_right_bottom_placeholder.place(relx=0, rely=0.5)
 
-app.mainloop()
+#app.mainloop()
