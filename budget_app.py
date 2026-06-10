@@ -25,20 +25,26 @@ class SimpleBudgetApp(tk.Tk):
         self.db = SimpleBudgetDB()
 
         #Main/Statystyki
-        style = ttk.Style(self)
-        style.theme_use("clam")
-        style.configure("TCombobox", fieldbackground="#40B5B3", background="transparent", foreground="#F8FAFC")
-        style.map("TCombobox", fieldbackground=[("!disabled", "#111217")], foreground=[("!disabled", "#F8FAFC")])
+        # style = ttk.Style(self)
+        # style.theme_use("clam")
+        # style.configure("TCombobox", fieldbackground="#40B5B3", background="transparent", foreground="#F8FAFC")
+        # style.map("TCombobox", fieldbackground=[("!disabled", "#111217")], foreground=[("!disabled", "#F8FAFC")])
 
         #Ramka z nazwa aplikacji
         top = ctk.CTkFrame(self, fg_color="#1B1D29", corner_radius=10)
         top.pack(fill="x", padx=8, pady=(14, 8))
         tk.Label(top, text="BudgetFlow", bg="#1B1D29", fg="#F8FAFC", font=("Segoe UI", 32, "bold")).pack(side="left", padx=20)
+        main_btt = ctk.CTkButton(top, text="Statystyki", fg_color="transparent").pack(side="right")
+        stat_btt = ctk.CTkButton(top, text="Strona główna", fg_color="transparent").pack(side="right")
 
         #Main/Statystyki
         self.view_var = tk.StringVar(value="Statystyki")
         ttk.Combobox(top, textvariable=self.view_var, values=["Main", "Statystyki"], state="readonly", width=14).pack(side="right")
         self.view_var.trace_add("write", lambda *_: self.render())
+
+        main_btt = ctk.CTkButton(top, text="Statystyki", fg_color="transparent", command=lambda: ).pack(side="right")
+        stat_btt = ctk.CTkButton(top, text="Strona główna", fg_color="transparent").pack(side="right")
+
 
         #???
         self.canvas = tk.Canvas(self, bg="#111217", highlightthickness=0)
@@ -111,6 +117,13 @@ class SimpleBudgetApp(tk.Tk):
                 tk.Label(row, text=f"{item['account_name']} • {item['tag']} • {item['note'] or 'Brak notatki'}", bg="#252837", fg="#CBD5E1", font=("Segoe UI", 11)).pack(anchor="w", padx=10, pady=(0, 8))
         else:
             #Zakladka statystyki
+            stat_frame = ctk.CTkFrame(self.scroll, fg_color="transparent")
+            stat_frame.pack(fill="both", padx=8, pady=4, expand=True)
+            stat_frame.grid_columnconfigure(0, weight=1, uniform="group2")
+            stat_frame.grid_columnconfigure(1, weight=1, uniform="group2")
+            stat_frame.grid_columnconfigure(2, weight=1, uniform="group2")
+            stat_frame.grid_rowconfigure(0, weight=1)
+
             tk.Label(self.scroll, text="Statystyki", bg="#1B1D29", fg="#F8FAFC", font=("Segoe UI", 24, "bold")).pack(anchor="w", padx=8, pady=(4, 8))
             tk.Label(self.scroll, text="Wydatki i wpływy według tagów", bg="#1B1D29", fg="#94A3B8", font=("Segoe UI", 12)).pack(anchor="w", padx=8, pady=(0, 8))
             stats = self.db.stats()
