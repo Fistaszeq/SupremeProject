@@ -13,46 +13,53 @@ import customtkinter as ctk
 from budget_db import SimpleBudgetDB
 from budget_dialogs import AddAccountDialog, AddTransactionDialog
 
-
 class SimpleBudgetApp(tk.Tk):
     """Główna klasa aplikacji budżetowej."""
 
     def __init__(self):
         super().__init__()
         self.title("Budget iOS")
-        self.geometry("430x900")
+        self.geometry("1200x900")
         self.minsize(380, 760)
-        self.configure(bg="#0F172A")
+        self.configure(bg="#111217")
         self.db = SimpleBudgetDB()
 
+        #Main/Statystyki
         style = ttk.Style(self)
         style.theme_use("clam")
-        style.configure("TCombobox", fieldbackground="#111827", background="#111827", foreground="#F8FAFC")
-        style.map("TCombobox", fieldbackground=[("!disabled", "#111827")], foreground=[("!disabled", "#F8FAFC")])
+        style.configure("TCombobox", fieldbackground="#40B5B3", background="transparent", foreground="#F8FAFC")
+        style.map("TCombobox", fieldbackground=[("!disabled", "#111217")], foreground=[("!disabled", "#F8FAFC")])
 
-        top = tk.Frame(self, bg="#0F172A")
-        top.pack(fill="x", padx=16, pady=(14, 8))
-        tk.Label(top, text="Budżet", bg="#0F172A", fg="#F8FAFC", font=("Segoe UI", 24, "bold")).pack(side="left")
+        #Ramka z nazwa aplikacji
+        top = ctk.CTkFrame(self, fg_color="#1B1D29", corner_radius=10)
+        top.pack(fill="x", padx=8, pady=(14, 8))
+        tk.Label(top, text="BudgetFlow", bg="#1B1D29", fg="#F8FAFC", font=("Segoe UI", 32, "bold")).pack(side="left", padx=20)
 
-        self.view_var = tk.StringVar(value="Main")
+        #Main/Statystyki
+        self.view_var = tk.StringVar(value="Statystyki")
         ttk.Combobox(top, textvariable=self.view_var, values=["Main", "Statystyki"], state="readonly", width=14).pack(side="right")
         self.view_var.trace_add("write", lambda *_: self.render())
 
-        self.canvas = tk.Canvas(self, bg="#0F172A", highlightthickness=0)
-        self.canvas.pack(fill="both", expand=True, padx=8, pady=(0, 80))
+        #???
+        self.canvas = tk.Canvas(self, bg="#111217", highlightthickness=0)
+        self.canvas.pack(fill="both", expand=True, padx=8, pady=(0, 0))
 
-        self.scroll = tk.Frame(self.canvas, bg="#0F172A")
+        #Ramka body
+        self.scroll = ctk.CTkFrame(self.canvas, fg_color="#1B1D29", corner_radius=10)
         self.scroll_window = self.canvas.create_window((0, 0), window=self.scroll, anchor="nw")
         self.canvas.bind("<Configure>", self._on_configure)
 
-        self.fab = tk.Button(self, text="+", bg="#2563EB", fg="#F8FAFC", font=("Segoe UI", 22, "bold"), bd=0, relief="flat", width=4, height=1, command=self.open_add_menu)
-        self.fab.place(relx=1.0, rely=1.0, x=-18, y=-18, anchor="se")
-
+        #Przycisk do dodwania wpisow
+        self.fab = ctk.CTkButton(self, text="+", fg_color="#6E5BE8", font=("Segoe UI", 24, "bold"), width=50, height=50, corner_radius=10, command=self.open_add_menu)
+        self.fab.place(relx=1.0, rely=1.0, x=-36, y=-18, anchor="se")
+        self.fab.lift()
         self.render()
 
     def _on_configure(self, event):
-        self.canvas.configure(scrollregion=(0, 0, event.width, self.scroll.winfo_reqheight()))
-        self.canvas.itemconfigure(self.scroll_window, width=event.width)
+        req_height = self.scroll.winfo_reqheight()
+        height = max(event.height, req_height)
+        self.canvas.configure(scrollregion=(0, 0, event.width, req_height))
+        self.canvas.itemconfigure(self.scroll_window, width=event.width, height=height)
 
     def render(self):
         for child in self.scroll.winfo_children():
@@ -62,42 +69,56 @@ class SimpleBudgetApp(tk.Tk):
         total = sum(a['balance'] for a in accounts)
 
         if self.view_var.get() == "Main":
-            tk.Label(self.scroll, text="Łącznie na wszystkich kontach", bg="#0F172A", fg="#94A3B8", font=("Segoe UI", 12)).pack(anchor="w", padx=8, pady=(4, 0))
-            tk.Label(self.scroll, text=f"{total:.0f} zł", bg="#0F172A", fg="#F8FAFC", font=("Segoe UI", 30, "bold")).pack(anchor="w", padx=8, pady=(2, 12))
+            body_frame = ctk.CTkFrame(self.scroll, fg_color="transparent")
+            body_frame.pack(fill="both", padx=8, pady=4, expand=True)
+            body_frame.grid_columnconfigure(0, weight=1, uniform="group1")
+            body_frame.grid_columnconfigure(1, weight=1, uniform="group1")
+            body_frame.grid_rowconfigure(0, weight=1)
+
+            body_left = ctk.CTkScrollableFrame(body_frame, fg_color="transparent", label_text="")
+            body_left.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
+
+            tk.Label(body_left, text="Łącznie na wszystkich kontach", bg="#1B1D29", fg="#94A3B8", font=("Segoe UI", 12)).pack(anchor="w", padx=8, pady=(4, 0))
+            tk.Label(body_left, text=f"{total:.0f} zł", bg="#1B1D29", fg="#F8FAFC", font=("Segoe UI", 30, "bold")).pack(anchor="w", padx=8, pady=(2, 12))
 
             if not accounts:
-                empty = tk.Frame(self.scroll, bg="#111827", bd=0)
+                empty = ctk.CTkFrame(self.scroll, fg_color="#252837", corner_radius=10)
                 empty.pack(fill="x", padx=8, pady=6)
-                tk.Label(empty, text="Brak kont — dodaj pierwsze konto", bg="#111827", fg="#CBD5E1", font=("Segoe UI", 13)).pack(pady=18)
-                tk.Button(empty, text="Dodaj konto", bg="#2563EB", fg="#F8FAFC", bd=0, font=("Segoe UI", 11, "bold"), command=self.add_account).pack(pady=(0, 16))
+                tk.Label(empty, text="Brak kont — dodaj pierwsze konto", bg="#111217", fg="#CBD5E1", font=("Segoe UI", 13)).pack(pady=18)
+                ctk.CTkButton(self.scroll, text="Dodaj konto", fg_color="#6E5BE8", font=("Segoe UI", 14, "bold"), corner_radius=10, command=self.add_account).pack(pady=10)
             else:
                 for account in accounts:
-                    card = tk.Frame(self.scroll, bg="#111827", bd=0)
+                    card = ctk.CTkFrame(body_left, fg_color="#252837", corner_radius=10)
                     card.pack(fill="x", padx=8, pady=6)
-                    tk.Label(card, text=account['name'], bg="#111827", fg="#F8FAFC", font=("Segoe UI", 15, "bold")).pack(anchor="w", padx=14, pady=(12, 2))
-                    tk.Label(card, text=f"{account['balance']:.2f} zł", bg="#111827", fg="#60A5FA", font=("Segoe UI", 18, "bold")).pack(anchor="w", padx=14, pady=(0, 12))
+                    tk.Label(card, text=account['name'], bg="#252837", fg="#F8FAFC", font=("Segoe UI", 15, "bold")).pack(anchor="w", padx=14, pady=(12, 2))
+                    tk.Label(card, text=f"{account['balance']:.2f} zł", bg="#252837", fg="#a095e8", font=("Segoe UI", 18, "bold")).pack(anchor="w", padx=14, pady=(0, 12))
 
-                tk.Button(self.scroll, text="Dodaj konto", bg="#2563EB", fg="#F8FAFC", bd=0, font=("Segoe UI", 11, "bold"), command=self.add_account).pack(pady=10)
+                #Przycisk dodaj konto
+                ctk.CTkButton(body_left, text="Dodaj konto", fg_color="#6E5BE8", font=("Segoe UI", 14, "bold"), corner_radius=10, command=self.add_account).pack(pady=10)
 
-            history = tk.Frame(self.scroll, bg="#111827", bd=0)
-            history.pack(fill="x", padx=8, pady=(14, 6))
-            tk.Label(history, text="Historia wpisów", bg="#111827", fg="#F8FAFC", font=("Segoe UI", 15, "bold")).pack(anchor="w", padx=14, pady=(10, 6))
+            body_right = ctk.CTkScrollableFrame(body_frame, fg_color="transparent")
+            body_right.grid(row=0, column=1, sticky="nsew", padx=(6, 0))
+
+            history = ctk.CTkFrame(body_right, fg_color="#111217", corner_radius=10)
+            history.pack(fill="both", padx=8, pady=(8, 8), expand=True)
+            tk.Label(history, text="Historia wpisów", bg="#111217", fg="#F8FAFC", font=("Segoe UI", 15, "bold")).pack(anchor="w", padx=14, pady=(10, 6))
             for item in self.db.transactions():
-                row = tk.Frame(history, bg="#172033", bd=0)
+                row = ctk.CTkFrame(history, fg_color="#252837", corner_radius=10)
                 row.pack(fill="x", padx=10, pady=4)
                 sign = "+" if item['kind'] == "Wpłata" else "-"
-                color = "#34D399" if item['kind'] == "Wpłata" else "#F87171"
-                tk.Label(row, text=f"{sign} {item['amount']:.0f} zł", bg="#172033", fg=color, font=("Segoe UI", 13, "bold")).pack(anchor="w", padx=10, pady=(8, 2))
-                tk.Label(row, text=f"{item['account_name']} • {item['tag']} • {item['note'] or 'Brak notatki'}", bg="#172033", fg="#CBD5E1", font=("Segoe UI", 11)).pack(anchor="w", padx=10, pady=(0, 8))
+                color = "#95e8af" if item['kind'] == "Wpłata" else "#e89595"
+                tk.Label(row, text=f"{sign} {item['amount']:.0f} zł", bg="#252837", fg=color, font=("Segoe UI", 13, "bold")).pack(anchor="w", padx=10, pady=(8, 2))
+                tk.Label(row, text=f"{item['account_name']} • {item['tag']} • {item['note'] or 'Brak notatki'}", bg="#252837", fg="#CBD5E1", font=("Segoe UI", 11)).pack(anchor="w", padx=10, pady=(0, 8))
         else:
-            tk.Label(self.scroll, text="Statystyki", bg="#0F172A", fg="#F8FAFC", font=("Segoe UI", 24, "bold")).pack(anchor="w", padx=8, pady=(4, 8))
-            tk.Label(self.scroll, text="Wydatki i wpływy według tagów", bg="#0F172A", fg="#94A3B8", font=("Segoe UI", 12)).pack(anchor="w", padx=8, pady=(0, 8))
+            #Zakladka statystyki
+            tk.Label(self.scroll, text="Statystyki", bg="#1B1D29", fg="#F8FAFC", font=("Segoe UI", 24, "bold")).pack(anchor="w", padx=8, pady=(4, 8))
+            tk.Label(self.scroll, text="Wydatki i wpływy według tagów", bg="#1B1D29", fg="#94A3B8", font=("Segoe UI", 12)).pack(anchor="w", padx=8, pady=(0, 8))
             stats = self.db.stats()
             for item in stats:
-                card = tk.Frame(self.scroll, bg="#111827", bd=0)
+                card = ctk.CTkFrame(self.scroll, fg_color="#252837", corner_radius=10)
                 card.pack(fill="x", padx=8, pady=6)
-                tk.Label(card, text=item['tag'], bg="#111827", fg="#F8FAFC", font=("Segoe UI", 14, "bold")).pack(anchor="w", padx=12, pady=(10, 2))
-                tk.Label(card, text=f"Wydano: {item['spent']:.0f} zł   •   Wpłaty: {item['income']:.0f} zł", bg="#111827", fg="#CBD5E1", font=("Segoe UI", 12)).pack(anchor="w", padx=12, pady=(0, 10))
+                tk.Label(card, text=item['tag'], bg="#252837", fg="#F8FAFC", font=("Segoe UI", 14, "bold")).pack(anchor="w", padx=12, pady=(10, 2))
+                tk.Label(card, text=f"Wydano: {item['spent']:.0f} zł   •   Wpłaty: {item['income']:.0f} zł", bg="#252837", fg="#CBD5E1", font=("Segoe UI", 12)).pack(anchor="w", padx=12, pady=(0, 10))
 
             if not stats:
                 tk.Label(self.scroll, text="Brak danych — dodaj pierwszy wpis", bg="#0F172A", fg="#CBD5E1", font=("Segoe UI", 13)).pack(pady=20)
