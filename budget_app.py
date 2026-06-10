@@ -51,11 +51,12 @@ class SimpleBudgetApp(ctk.CTk):
         self.loading_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
         self.loading_spinner = ctk.CTkLabel(self.loading_frame, text="Ładowanie danych...", text_color="#8E8E93", font=("Segoe UI", 20, "bold"))
         self.loading_spinner.place(relx=0.5, rely=0.5, anchor="center")
-
-        self.fab = ctk.CTkButton(self, text="+", fg_color="#6E5BE8",
+        
+        self.fab = ctk.CTkButton(self, text="+", fg_color="#6E5BE8", hover_color="#4b39bf",
                                  font=("Segoe UI", 24, "bold"), width=50, height=50, corner_radius=10,
                                  command=self.open_add_menu)
         self.fab.place(relx=1.0, rely=1.0, x=-36, y=-18, anchor="se")
+        
         self.fab.lift()
         
         self.trigger_render()
@@ -129,7 +130,7 @@ class SimpleBudgetApp(ctk.CTk):
                     ctk.CTkButton(btn_frame, text="Edytuj", width=65, height=24, fg_color="#334155", hover_color="#475569", text_color="#F8FAFC", font=("Segoe UI", 11, "bold"), command=lambda a=account: self.edit_account(a)).pack(side="left", padx=(0, 8))
                     ctk.CTkButton(btn_frame, text="Usuń", width=65, height=24, fg_color="#EF4444", hover_color="#DC2626", text_color="#FFFFFF", font=("Segoe UI", 11, "bold"), command=lambda a=account: self.delete_account(a)).pack(side="left")
 
-            ctk.CTkButton(body_left, text="Dodaj konto", fg_color="#6E5BE8", font=("Segoe UI", 14, "bold"), corner_radius=10, command=self.add_account).pack(pady=10)
+            ctk.CTkButton(body_left, text="Dodaj konto", fg_color="#6E5BE8", hover_color="#4b39bf", font=("Segoe UI", 14, "bold"), corner_radius=10, command=self.add_account).pack(pady=10)
 
             body_right = ctk.CTkScrollableFrame(current_frame, fg_color="transparent")
             body_right.grid(row=0, column=1, sticky="nsew", padx=(6,  0))
@@ -227,9 +228,27 @@ class SimpleBudgetApp(ctk.CTk):
                     ctk.CTkLabel(pie_chart_frame, text="Brak danych o wydatkach", text_color="#CBD5E1", font=("Segoe UI", 14)).pack(expand=True, pady=20)
 
                 #Wykres slupkowy
-                tags = [s['tag'] for s in stats]
-                spent = [s['spent'] for s in stats]
+                from collections import defaultdict
+                from datetime import datetime, timedelta
 
+                raw_daily_expenses = defaultdict(float)
+                for tx in self.db.transactions():
+                    if tx['kind'] != "Wpłata":
+                        date_str = tx['created_at'].split(" ") if " " in tx['created_at'] else tx['created_at']
+                        raw_daily_expenses[date_str] += float(tx['amount'])
+
+                #Generwoanie ostatniego tygodnia
+                sorted_dates = []
+                daily_spent = []
+                
+                today = datetime.now()
+                for i in range(6, -1, -1):
+                    day = today - timedelta(days=i)
+                    date_str = day.strftime("%Y-%m-%d")
+                    sorted_dates.append(date_str)
+                    daily_spent.append(raw_daily_expenses.get(date_str, 0.0))
+
+                #Rysowanie wykresu
                 bar_chart_frame = ctk.CTkFrame(bar_chart_container, fg_color="#252837", corner_radius=10)
                 bar_chart_frame.pack(fill="both", expand=True, padx=8, pady=6)
 
@@ -237,9 +256,10 @@ class SimpleBudgetApp(ctk.CTk):
                 ax_bar = fig_bar.add_subplot(111)
                 ax_bar.set_facecolor("#252837")
                 
-                bars = ax_bar.barh(tags, spent, color="#6E5BE8", height=0.6)
-                ax_bar.set_title("Wydatki według kategorii", color="white", fontsize=12, fontweight="bold", pad=10)
-                ax_bar.tick_params(colors='white', labelsize=10)
+                bars = ax_bar.bar(sorted_dates, daily_spent, color="#6E5BE8", width=0.5)
+                ax_bar.set_title("Całkowite wydatki z ostatnich 7 dni", color="white", fontsize=12, fontweight="bold", pad=10)
+                ax_bar.tick_params(colors='white', labelsize=10, axis='x', rotation=45)
+                ax_bar.tick_params(colors='white', labelsize=10, axis='y')
                 
                 for spine in ax_bar.spines.values(): 
                     spine.set_visible(False)

@@ -84,7 +84,7 @@ class AccountDialog(ctk.CTkToplevel):
             self.display_color_var.set("Niebieski")
 
         btn_text = "Zapisz zmiany" if self.is_edit else "Zapisz konto"
-        self.save_btn = ctk.CTkButton(self, text=btn_text, fg_color="#0A84FF", hover_color="#0066CC", text_color="#FFFFFF", font=("SF Pro Display", 14, "bold"), corner_radius=10, height=40, command=lambda: self._save(on_saved))
+        self.save_btn = ctk.CTkButton(self, text=btn_text, fg_color="#6E5BE8", hover_color="#4b39bf", text_color="#FFFFFF", font=("SF Pro Display", 14, "bold"), corner_radius=10, height=40, command=lambda: self._save(on_saved))
         self.save_btn.pack(fill="x", padx=24, pady=20)
 
         self.bind('<Return>', lambda event: self._save(on_saved))
