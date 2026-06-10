@@ -16,6 +16,7 @@ from budget_dialogs import AddAccountDialog, AddTransactionDialog
 class SimpleBudgetApp(tk.Tk):
     """Główna klasa aplikacji budżetowej."""
 
+
     def __init__(self):
         super().__init__()
         self.title("Budget iOS")
@@ -34,17 +35,24 @@ class SimpleBudgetApp(tk.Tk):
         top = ctk.CTkFrame(self, fg_color="#1B1D29", corner_radius=10)
         top.pack(fill="x", padx=8, pady=(14, 8))
         tk.Label(top, text="BudgetFlow", bg="#1B1D29", fg="#F8FAFC", font=("Segoe UI", 32, "bold")).pack(side="left", padx=20)
-        main_btt = ctk.CTkButton(top, text="Statystyki", fg_color="transparent").pack(side="right")
-        stat_btt = ctk.CTkButton(top, text="Strona główna", fg_color="transparent").pack(side="right")
 
         #Main/Statystyki
-        self.view_var = tk.StringVar(value="Statystyki")
-        ttk.Combobox(top, textvariable=self.view_var, values=["Main", "Statystyki"], state="readonly", width=14).pack(side="right")
-        self.view_var.trace_add("write", lambda *_: self.render())
+        # self.view_var = tk.StringVar(value="Statystyki")
+        # ttk.Combobox(top, textvariable=self.view_var, values=["Main", "Statystyki"], state="readonly", width=14).pack(side="right")
+        # self.view_var.trace_add("write", lambda *_: self.render())
 
-        main_btt = ctk.CTkButton(top, text="Statystyki", fg_color="transparent", command=lambda: ).pack(side="right")
-        stat_btt = ctk.CTkButton(top, text="Strona główna", fg_color="transparent").pack(side="right")
+        self.view_var = "Statystyki"
 
+        def button_main():
+            self.view_var = "Main"
+            self.render()
+
+        def button_stat():
+            self.view_var = "Statystyki"
+            self.render()
+
+        stat_btt = ctk.CTkButton(top, text="Statystyki", fg_color="transparent", hover_color="#111217", font=("Segoe UI", 14, "bold"), command=button_stat).pack(side="right", padx=(4,8))
+        main_btt = ctk.CTkButton(top, text="Strona główna", fg_color="transparent", hover_color="#111217", font=("Segoe UI", 14, "bold"), command=button_main).pack(side="right", padx=(4,4))
 
         #???
         self.canvas = tk.Canvas(self, bg="#111217", highlightthickness=0)
@@ -74,7 +82,7 @@ class SimpleBudgetApp(tk.Tk):
         accounts = self.db.accounts()
         total = sum(a['balance'] for a in accounts)
 
-        if self.view_var.get() == "Main":
+        if self.view_var == "Main":
             body_frame = ctk.CTkFrame(self.scroll, fg_color="transparent")
             body_frame.pack(fill="both", padx=8, pady=4, expand=True)
             body_frame.grid_columnconfigure(0, weight=1, uniform="group1")
