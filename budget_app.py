@@ -10,6 +10,9 @@ import tkinter as tk
 from tkinter import ttk
 import customtkinter as ctk
 
+# import matplotlib.pyplot as plt
+# from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
 from budget_db import SimpleBudgetDB
 from budget_dialogs import AddAccountDialog, AddTransactionDialog
 
@@ -25,21 +28,10 @@ class SimpleBudgetApp(tk.Tk):
         self.configure(bg="#111217")
         self.db = SimpleBudgetDB()
 
-        #Main/Statystyki
-        # style = ttk.Style(self)
-        # style.theme_use("clam")
-        # style.configure("TCombobox", fieldbackground="#40B5B3", background="transparent", foreground="#F8FAFC")
-        # style.map("TCombobox", fieldbackground=[("!disabled", "#111217")], foreground=[("!disabled", "#F8FAFC")])
-
         #Ramka z nazwa aplikacji
         top = ctk.CTkFrame(self, fg_color="#1B1D29", corner_radius=10)
         top.pack(fill="x", padx=8, pady=(14, 8))
         tk.Label(top, text="BudgetFlow", bg="#1B1D29", fg="#F8FAFC", font=("Segoe UI", 32, "bold")).pack(side="left", padx=20)
-
-        #Main/Statystyki
-        # self.view_var = tk.StringVar(value="Statystyki")
-        # ttk.Combobox(top, textvariable=self.view_var, values=["Main", "Statystyki"], state="readonly", width=14).pack(side="right")
-        # self.view_var.trace_add("write", lambda *_: self.render())
 
         self.view_var = "Statystyki"
 
@@ -129,20 +121,23 @@ class SimpleBudgetApp(tk.Tk):
             stat_frame.pack(fill="both", padx=8, pady=4, expand=True)
             stat_frame.grid_columnconfigure(0, weight=1, uniform="group2")
             stat_frame.grid_columnconfigure(1, weight=1, uniform="group2")
-            stat_frame.grid_columnconfigure(2, weight=1, uniform="group2")
-            stat_frame.grid_rowconfigure(0, weight=1)
+            stat_frame.grid_rowconfigure(0, weight=1, uniform="group2")
+            stat_frame.grid_rowconfigure(1, weight=1, uniform="group2")
 
-            tk.Label(self.scroll, text="Statystyki", bg="#1B1D29", fg="#F8FAFC", font=("Segoe UI", 24, "bold")).pack(anchor="w", padx=8, pady=(4, 8))
-            tk.Label(self.scroll, text="Wydatki i wpływy według tagów", bg="#1B1D29", fg="#94A3B8", font=("Segoe UI", 12)).pack(anchor="w", padx=8, pady=(0, 8))
+            stat_left = ctk.CTkScrollableFrame(stat_frame, fg_color="transparent", label_text="")
+            stat_left.grid(row=0, column=0, rowspan="2", sticky="nsew", padx=(0, 6))
+
+            tk.Label(stat_left, text="Statystyki", bg="#1B1D29", fg="#F8FAFC", font=("Segoe UI", 24, "bold")).pack(anchor="w", padx=8, pady=(4, 8))
+            tk.Label(stat_left, text="Wydatki i wpływy według tagów", bg="#1B1D29", fg="#94A3B8", font=("Segoe UI", 12)).pack(anchor="w", padx=8, pady=(0, 8))
             stats = self.db.stats()
             for item in stats:
-                card = ctk.CTkFrame(self.scroll, fg_color="#252837", corner_radius=10)
+                card = ctk.CTkFrame(stat_left, fg_color="#252837", corner_radius=10)
                 card.pack(fill="x", padx=8, pady=6)
                 tk.Label(card, text=item['tag'], bg="#252837", fg="#F8FAFC", font=("Segoe UI", 14, "bold")).pack(anchor="w", padx=12, pady=(10, 2))
                 tk.Label(card, text=f"Wydano: {item['spent']:.0f} zł   •   Wpłaty: {item['income']:.0f} zł", bg="#252837", fg="#CBD5E1", font=("Segoe UI", 12)).pack(anchor="w", padx=12, pady=(0, 10))
 
             if not stats:
-                tk.Label(self.scroll, text="Brak danych — dodaj pierwszy wpis", bg="#0F172A", fg="#CBD5E1", font=("Segoe UI", 13)).pack(pady=20)
+                tk.Label(stat_left, text="Brak danych — dodaj pierwszy wpis", bg="#0F172A", fg="#CBD5E1", font=("Segoe UI", 13)).pack(pady=20)
 
         self.update_idletasks()
         self.canvas.configure(scrollregion=(0, 0, self.winfo_width(), self.scroll.winfo_reqheight()))
