@@ -8,6 +8,7 @@ Edytorzy:
 
 import tkinter as tk
 from tkinter import ttk
+import customtkinter as ctk
 
 from budget_db import SimpleBudgetDB
 from budget_dialogs import AddAccountDialog, AddTransactionDialog
