@@ -10,13 +10,13 @@ import tkinter as tk
 from tkinter import ttk
 import customtkinter as ctk
 
-# import matplotlib.pyplot as plt
-# from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 from budget_db import SimpleBudgetDB
 from budget_dialogs import AddAccountDialog, AddTransactionDialog
 
-class SimpleBudgetApp(tk.Tk):
+class SimpleBudgetApp(ctk.CTk):
     """Główna klasa aplikacji budżetowej."""
 
 
@@ -25,7 +25,7 @@ class SimpleBudgetApp(tk.Tk):
         self.title("Budget iOS")
         self.geometry("1200x900")
         self.minsize(380, 760)
-        self.configure(bg="#111217")
+        self.configure(fg_color="#111217")
         self.db = SimpleBudgetDB()
 
         #Ramka z nazwa aplikacji
@@ -139,6 +139,37 @@ class SimpleBudgetApp(tk.Tk):
             if not stats:
                 tk.Label(stat_left, text="Brak danych — dodaj pierwszy wpis", bg="#0F172A", fg="#CBD5E1", font=("Segoe UI", 13)).pack(pady=20)
 
+            #Tworzenie sekcji z wykresem kolowym
+            pie_chart_frame = ctk.CTkFrame(stat_frame, fg_color="#252837", corner_radius=10)
+            pie_chart_frame.grid(row=0, column=1, sticky="nsew", padx=(8,0), pady=(0,8))
+
+            labels = [item["tag"] for item in stats if item["spent"] > 0]
+            sizes = [item["spent"] for item in stats if item["spent"] > 0]
+
+            #Tworzenie wykresu
+            if sizes:
+                fig, ax = plt.subplots(figsize=(4,4), facecolor="#252837")
+                ax.set_facecolor("#252837")
+
+                wedges, texts, autotexts = ax.pie(sizes, labels=labels, autopct="%1.0f%%", startangle=90, colors=['#6E5BE8', '#95e8af', '#e89595', '#a095e8', '#f1c40f'], textprops=dict(color="#F8FAFC"), wedgeprops={"width": 0.4, "edgecolor": "#252837"})
+
+                for autotext in autotexts:
+                    autotext.set_color("#F8FAFC")
+                    autotext.set_weight("bold")
+
+                ax.axis("equal")
+                ax.set_title("Statystyki całkowitych wydatków", color="#F8FAFC", fontname="Segoe UI", fontsize=14, fontweight="bold", pad=8)
+
+                #Osadzenie wykresu
+                canvas_pie_chart = FigureCanvasTkAgg(fig, master=pie_chart_frame)
+                canvas_pie_chart.draw()
+                canvas_pie_chart.get_tk_widget().pack(fill="both", expand=True, padx=8, pady=8)
+                plt.close(fig)
+
+            else:
+                tk.Label(pie_chart_frame, text="Brak danych", bg="#252837", fg="#CBD5E1", font=("Segoe UI", 14)).pack(expand=True)
+
+
         self.update_idletasks()
         self.canvas.configure(scrollregion=(0, 0, self.winfo_width(), self.scroll.winfo_reqheight()))
 
@@ -163,3 +194,4 @@ if __name__ == "__main__":
     app = SimpleBudgetApp()
     app.mainloop()
     app.db.close()
+
