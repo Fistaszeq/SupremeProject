@@ -38,3 +38,10 @@ Aplikacja wykorzystuje architekturę warstwową (zbliżoną do MVC), co zapewnia
 1. Instalacja zależności:
    ```bash
    pip install customtkinter matplotlib
+   ```
+2. Uruchomienie
+   ```bash
+   python run_budget.py
+   ```
+   
+
