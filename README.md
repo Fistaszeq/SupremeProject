@@ -1,49 +1,40 @@
-# 💸 BudgetFlow – Dokumentacja Projektowa
+# 💸 BudgetFlow
+*Profesjonalna aplikacja do zarządzania budżetem domowym.*
 
-BudgetFlow to zaawansowana aplikacja do zarządzania finansami osobistymi, zaprojektowana z myślą o przejrzystości, estetyce (styl iOS Dark Mode) i bezpieczeństwie danych.
+## 📋 Opis projektu
+**BudgetFlow** to desktopowa aplikacja finansowa, stworzona z myślą o użytkownikach ceniących estetykę i wydajność. Projekt skupia się na pełnym cyklu życia danych finansowych – od rejestracji kont, przez księgowanie transakcji, aż po zaawansowaną analitykę wydatków.
 
-## 🎤 Skrypt na Prezentację
+## 🛠 Technologie i Architektura
+Projekt został zrealizowany w oparciu o nowoczesny stos technologiczny zapewniający stabilność i skalowalność:
 
-### 1. Ogół działania aplikacji
-"Aplikacja pełni rolę osobistego centrum finansów. Główne okno jest podzielone na dwie strefy: lewą – zarządzanie kontami (podgląd stanu, edycja, tworzenie) oraz prawą – historię operacji i szybkie akcje."
+* **Język:** Python 3.8+
+* **Interfejs GUI:** `customtkinter` (nowoczesne widżety z natywnym wsparciem dla Dark Mode) oraz `tkinter`.
+* **Baza Danych:** `sqlite3` – relacyjna baza danych z wymuszoną integralnością referencyjną (`PRAGMA foreign_keys = ON`).
+* **Analityka:** `matplotlib` (obiektowy interfejs `Figure`) do generowania dynamicznych wykresów analitycznych.
 
-### 2. Funkcjonalności (Co pokazujemy?)
-* **Konta:** Możemy tworzyć wiele kont (np. Portfel, Bank) z przypisanymi kolorami.
-* **Operacje:** Szybkie dodawanie wpłat i wypłat. 
-    * *Tip:* W oknie dodawania działa klawisz **Enter**, który natychmiast zatwierdza operację.
-* **Historia:** Po prawej stronie widać listę transakcji. Jeśli często robimy te same wydatki, opcja **"Ponów"** kopiuje dane wpisu, oszczędzając czas.
-* **Szczegóły:** Klikając w konto, przechodzimy do szczegółowego widoku z wykresem kołowym wydatków.
-* **Statystyki:** Osobna zakładka, gdzie agregujemy dane z całego budżetu.
+## 🏗 Architektura systemu
+Aplikacja wykorzystuje architekturę warstwową (zbliżoną do MVC), co zapewnia separację logiki od interfejsu:
+* **Warstwa Modelu (`budget_db.py`):** Odpowiada za bezpośrednią komunikację z bazą SQLite, bezpieczne transakcje (ACID) oraz operacje na danych.
+* **Warstwa Kontrolera (`budget_app.py`):** Zarządza stanem aplikacji, obsługuje zdarzenia (events) i steruje przepływem danych między bazą a widokami.
+* **Warstwa Widoku (`budget_dialogs.py`):** Odpowiada za responsywne okna dialogowe i formularze w stylu iOS Design.
 
-### 3. Aspekty techniczne (UX & Bezpieczeństwo)
-* **Responsive Design:** Aplikację można dowolnie resizować; przy większej liczbie danych pojawia się przewijanie (scroll).
-* **Bezpieczeństwo:** Każde usunięcie konta wymaga potwierdzenia. Zaimplementowano usuwanie kaskadowe (`ON DELETE CASCADE`) – usuwając konto, czyścimy powiązane wpisy, by nie zostawiać "śmieci" w bazie.
-* **Walidacja:** System informuje o błędnych danych i komunikatami kieruje użytkownika, gdy np. próbuje dodać wpis bez utworzonego wcześniej konta.
-* **Performance:** Przy przełączaniu między widokami dodaliśmy "ładowanie danych", co daje użytkownikowi sygnał, że aplikacja pracuje.
-* **Multi-platform:** Projekt działa na Windowsie i Linuxie.
+## ✨ Kluczowe funkcjonalności
 
-### 4. Architektura plików
-* `run_budget.py`: Główny punkt wejścia.
-* `budget_app.py`: "Serce" GUI – kafelki, zakładki, mechanika układu.
-* `budget_dialogs.py`: Wszystkie okna popup (formularze).
-* `budget_db.py`: Logika SQL – bezpieczne zapytania, schematy bazy SQLite.
+### 1. Zarządzanie portfelem (CRUD)
+* **Konta:** Tworzenie wielu rachunków z przypisanymi kolorami identyfikacyjnymi.
+* **Edycja i usuwanie:** Pełna kontrola nad danymi. Dzięki relacjom w bazie (`ON DELETE CASCADE`), usunięcie konta czyści również przypisane do niego transakcje, dbając o porządek w bazie.
 
----
+### 2. Księgowanie i analiza
+* **Rejestr transakcji:** Wpłaty i wypłaty z obsługą notatek, kategorii (tagów) oraz datowania wpisów.
+* **Funkcja „Ponów”:** Szybkie powielanie historycznych transakcji (autofill), skracające czas wprowadzania powtarzalnych kosztów.
+* **Analityka:** Okno szczegółów konta z wykresami pierścieniowymi (Donut Chart) oraz zakładka z globalnymi statystykami tagów.
 
-## 🛠️ Plan rozwoju (Roadmap)
-W przyszłości planujemy:
-* **Własne kategorie:** Możliwość definiowania własnych tagów.
-* **Dopracowanie UX:** Lepsza kontrola nad przestrzenią przy resizowaniu okna.
-* **Dopamina:** Dodanie płynnych animacji przy wczytywaniu danych.
-* **Walidacja:** Blokada duplikatów nazw kont.
-* **Fix:** Naprawa buga ze statystykami (obecnie po usunięciu konta statystyki wymagają odświeżenia/poprawy).
+### 3. Optymalizacja i UX
+* **Tryb Ciemny (iOS Design):** Spójna paleta kolorów i nowoczesne komponenty (Segmented Buttons, ComboBoxes).
+* **Responsywność:** Aplikacja obsługuje zmianę rozmiaru okna, automatycznie skalując elementy interfejsu.
+* **Wydajność:** Asynchroniczne odświeżanie widoków (loading screen) oraz buforowanie komponentów (View Caching) eliminują opóźnienia przy przełączaniu zakładek.
 
----
-
-## 👥 Zespół
-* **Fistaszeq** – Main Programmer
-* **Alana** – QA & Data Analyst
-* **Maja** – UI/UX Designer
-* **Tomek** – Implementacja funkcji
-
-*Projekt stworzony w celach edukacyjnych, zoptymalizowany pod kątem stabilności i łatwej konserwacji kodu.*
+## 🚀 Instrukcja uruchomienia
+1. Instalacja zależności:
+   ```bash
+   pip install customtkinter matplotlib
