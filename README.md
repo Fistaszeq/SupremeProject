@@ -41,7 +41,7 @@ Aplikacja wykorzystuje architekturę warstwową (zbliżoną do MVC), co zapewnia
    ```
 2. Uruchomienie
    ```bash
-   python run_budget.py
+   python budget_app.py
    ```
    
 
