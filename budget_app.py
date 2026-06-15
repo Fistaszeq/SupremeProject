@@ -242,7 +242,8 @@ class SimpleBudgetApp(ctk.CTk):
                     recurring_label = " • Cykliczne" if item['note'].startswith("Cykliczne:") else ""
                     meta_text = f"{item['created_at']} • {item['account_name']} • {item['tag']}{recurring_label}"
                     ctk.CTkLabel(bottom_row, text=meta_text, text_color="#94A3B8", font=("Segoe UI", 12)).pack(side="left", pady=(2, 0))
-                    ctk.CTkButton(bottom_row, text="Ponów", width=60, height=24, fg_color="#3A3A3C", hover_color="#48484A", text_color="#FFFFFF", font=("Segoe UI", 11, "bold"), command=lambda t=item: self.repeat_transaction(t)).pack(side="right")
+                    ctk.CTkButton(bottom_row, text="Usuń", width=60, height=24, fg_color="#EF4444", hover_color="#DC2626", text_color="#FFFFFF", font=("Segoe UI", 11, "bold"), command=lambda t=item: self.delete_transaction(t)).pack(side="right", padx=(0, 8))
+                    ctk.CTkButton(bottom_row, text="Edytuj", width=60, height=24, fg_color="#0A84FF", hover_color="#0066CC", text_color="#FFFFFF", font=("Segoe UI", 11, "bold"), command=lambda t=item: self.edit_transaction(t)).pack(side="right", padx=(0, 8))
 
             upcoming_items = self._upcoming_recurring(limit=5)
             due_panel = ctk.CTkFrame(body_right, fg_color="#0F172A", corner_radius=14)
@@ -303,7 +304,7 @@ class SimpleBudgetApp(ctk.CTk):
             suggestion_text = self._generate_savings_suggestion()
             suggestions = ctk.CTkFrame(body_right, fg_color="#111217", corner_radius=10)
             suggestions.pack(fill="x", padx=8, pady=(0, 8))
-            ctk.CTkLabel(suggestions, text="Sugestie oszczędzania", text_color="#F8FAFC", font=("Segoe UI", 16, "bold")).pack(anchor="w", padx=14, pady=(10, 6))
+            ctk.CTkLabel(suggestions, text="Sugestie Asystenta", text_color="#F8FAFC", font=("Segoe UI", 16, "bold")).pack(anchor="w", padx=14, pady=(10, 6))
             ctk.CTkLabel(suggestions, text=suggestion_text, text_color="#CBD5E1", font=("Segoe UI", 13), wraplength=360, justify="left").pack(fill="x", padx=14, pady=(0, 14))
 
         elif self.view_var == "Statystyki":
@@ -539,7 +540,17 @@ class SimpleBudgetApp(ctk.CTk):
     def repeat_transaction(self, transaction):
         accounts = self.db.accounts()
         tags = self.db.tags()
-        AddTransactionDialog(self, accounts, tags, on_saved=self._save_transaction, transaction=transaction)
+        AddTransactionDialog(self, accounts, tags, on_saved=self._save_transaction, transaction=transaction, edit_mode=False)
+
+    def edit_transaction(self, transaction):
+        accounts = self.db.accounts()
+        tags = self.db.tags()
+        AddTransactionDialog(self, accounts, tags, on_saved=self._save_transaction, transaction=transaction, edit_mode=True)
+
+    def delete_transaction(self, transaction):
+        if messagebox.askyesno("Potwierdzenie", f"Czy na pewno chcesz usunąć wpis '{transaction['note'] or transaction['tag']}'?"):
+            self.db.delete_transaction(transaction['id'])
+            self.trigger_render()
 
     def open_recurring_menu(self, recurring=None):
         accounts = self.db.accounts()
@@ -567,29 +578,65 @@ class SimpleBudgetApp(ctk.CTk):
 
     def _generate_savings_suggestion(self):
         stats = self.db.stats()
-        if not stats:
-            return "Dodaj pierwsze transakcje, aby zobaczyć sugestie oszczędzania i raporty."
+        recurring = [r for r in self.db.recurring_transactions() if r.get('active') == 1]
+        if not stats and not recurring:
+            return "Jeszcze nic nie masz. Dodaj pierwsze konto i transakcję, a Asystent przygotuje dla Ciebie konkretne wskazówki."
 
         total_spent = sum(item["spent"] for item in stats)
         total_income = sum(item["income"] for item in stats)
+        active_recurring = len(recurring)
+        next_recurring = None
+        for template in recurring:
+            date_obj = self._parse_iso_date(template.get('next_date', ''))
+            if date_obj:
+                if next_recurring is None or date_obj < next_recurring[0]:
+                    next_recurring = (date_obj, template)
+
         if total_spent == 0:
-            return "Obecnie nie masz wydatków. Świetnie! Możesz dodać cykliczne transakcje, żeby ustawić automatyczne opłaty." 
+            message = "Świetnie, nie masz jeszcze wydatków. "
+            if active_recurring:
+                message += f"Masz {active_recurring} aktywnych cyklicznych płatności — patrz, czy harmonia między nimi a przychodami jest ok."
+            else:
+                message += "Dodaj cykliczne transakcje, by automatycznie planować regularne wpływy i wydatki."
+            return message
 
         top = max(stats, key=lambda item: item["spent"])
         ratio = (top["spent"] / total_spent) * 100 if total_spent else 0
-        message = f"Największy wydatek to {top['tag']} ({top['spent']:.2f} zł). "
-
-        if ratio >= 40:
-            message += "Spróbuj ograniczyć tę kategorię, szukając tańszych alternatyw lub ograniczeń."
-        elif total_spent > total_income:
-            message += "Wydajesz więcej niż otrzymujesz. Przejrzyj regularne koszty i zaoszczędź na subskrypcjach lub jedzeniu poza domem."
+        if total_spent > total_income:
+            trend = "Wydajesz więcej niż zarabiasz."
         else:
-            message += "Wydatki są w miarę zrównoważone. Kontynuuj korzystanie z cyklicznych transakcji, aby utrzymać porządek."
+            trend = "Wydatki są w normie względem przychodów."
+
+        message = f"Największym kosztem jest {top['tag']} ({top['spent']:.2f} zł), co stanowi {ratio:.0f}% wszystkich wydatków. "
+        if ratio >= 40:
+            message += "To silny sygnał: spróbuj ograniczyć tę kategorię lub znaleźć tańszą alternatywę. "
+        elif ratio >= 25:
+            message += "W tej kategorii jest sporo wydatków — rozważ jej monitoring. "
+        else:
+            message += "Masz dobrą rozkładówkę wydatków — utrzymaj kontrolę. "
+
+        if total_spent > total_income:
+            deficit = total_spent - total_income
+            message += f"Masz deficyt w wysokości {deficit:.2f} zł. Przejrzyj subskrypcje i jedzenie poza domem. "
+        else:
+            message += "Masz dodatni cashflow, ale obserwuj regularne płatności, by utrzymać tę przewagę. "
+
+        if active_recurring:
+            message += f"Masz {active_recurring} aktywnych cyklicznych transakcji. "
+            if next_recurring:
+                days = (next_recurring[0] - datetime.today().date()).days
+                when = "dzisiaj" if days == 0 else f"za {days} dni" if days > 0 else f"{abs(days)} dni temu"
+                message += f"Następna z nich ({next_recurring[1]['name']}) jest zaplanowana {when}."
+        else:
+            message += "Dodaj cykliczne transakcje, aby lepiej planować przyszłe wydatki i wpływy."
 
         return message
 
-    def _save_transaction(self, kind, amount, account_id, tag, note, tx_date):
-        self.db.add_transaction(kind, amount, account_id, tag, note, tx_date)
+    def _save_transaction(self, transaction_id, kind, amount, account_id, tag, note, tx_date):
+        if transaction_id is None:
+            self.db.add_transaction(kind, amount, account_id, tag, note, tx_date)
+        else:
+            self.db.update_transaction(transaction_id, kind, amount, account_id, tag, note, tx_date)
         self.trigger_render()
 
 
