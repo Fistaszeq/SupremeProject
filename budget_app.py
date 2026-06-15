@@ -272,6 +272,14 @@ class SimpleBudgetApp(ctk.CTk):
             else:
                 ctk.CTkLabel(due_panel, text="Brak nadchodzących aktywnych płatności.", text_color="#CBD5E1", font=("Segoe UI", 13), wraplength=360, justify="left").pack(fill="x", padx=14, pady=(8, 14))
 
+            assistant_insights = self._assistant_advice()
+            assistant = ctk.CTkFrame(body_right, fg_color="#08101D", corner_radius=14)
+            assistant.pack(fill="x", padx=8, pady=(0, 8))
+            ctk.CTkLabel(assistant, text="Asystent AI", text_color="#F8FAFC", font=("Segoe UI", 16, "bold")).pack(anchor="w", padx=14, pady=(10, 6))
+            for insight in assistant_insights:
+                ctk.CTkLabel(assistant, text=f"• {insight}", text_color="#CBD5E1", font=("Segoe UI", 12), wraplength=360, justify="left").pack(anchor="w", padx=20, pady=(0, 6))
+            ctk.CTkButton(assistant, text="Przeprowadź szybką analizę", fg_color="#6E5BE8", hover_color="#4b39bf", text_color="#FFFFFF", font=("Segoe UI", 12, "bold"), corner_radius=10, command=self.trigger_render).pack(fill="x", padx=14, pady=(6, 14))
+
             recurring = ctk.CTkFrame(body_right, fg_color="#111217", corner_radius=10)
             recurring.pack(fill="x", padx=8, pady=(0, 8))
             ctk.CTkLabel(recurring, text="Cykliczne transakcje", text_color="#F8FAFC", font=("Segoe UI", 16, "bold")).pack(anchor="w", padx=14, pady=(10, 6))
@@ -631,6 +639,58 @@ class SimpleBudgetApp(ctk.CTk):
             message += "Dodaj cykliczne transakcje, aby lepiej planować przyszłe wydatki i wpływy."
 
         return message
+
+    def _assistant_advice(self):
+        stats = self.db.stats()
+        recurring = [r for r in self.db.recurring_transactions() if r.get('active') == 1]
+        accounts = self.db.accounts()
+
+        if not stats and not recurring:
+            return [
+                "Dodaj pierwsze transakcje i przychody, aby Asystent mógł przygotować analizę.",
+                "Zacznij od konta, a następnie dodaj swój pierwszy wydatek lub wpływ.",
+            ]
+
+        total_spent = sum(item["spent"] for item in stats)
+        total_income = sum(item["income"] for item in stats)
+        balance = sum(a['balance'] for a in accounts)
+        suggestions = []
+
+        if total_income == 0:
+            suggestions.append("Brak przychodów. Dodaj wpis typu 'Wpłata', aby zobaczyć bilans budżetu.")
+        elif total_spent > total_income:
+            suggestions.append(f"Wydajesz więcej niż otrzymujesz: deficyt {total_spent - total_income:.2f} zł.")
+        else:
+            suggestions.append("Masz dodatni cashflow. Kontynuuj monitorowanie najdroższych kategorii.")
+
+        if stats:
+            top = max(stats, key=lambda item: item["spent"])
+            suggestions.append(f"Największym kosztem jest {top['tag']} ({top['spent']:.2f} zł). Sprawdź, czy możesz to zoptymalizować.")
+            if top['spent'] / total_spent >= 0.4:
+                suggestions.append(f"{top['tag']} zajmuje aż {top['spent'] / total_spent * 100:.0f}% wydatków — rozważ ograniczenia.")
+
+        if recurring:
+            next_date = None
+            next_item = None
+            for template in recurring:
+                date_obj = self._parse_iso_date(template.get('next_date', ''))
+                if date_obj is not None and (next_date is None or date_obj < next_date):
+                    next_date = date_obj
+                    next_item = template
+            if next_item and next_date:
+                days = (next_date - datetime.today().date()).days
+                when = "dzisiaj" if days == 0 else f"za {days} dni" if days > 0 else f"{abs(days)} dni temu"
+                suggestions.append(f"Następna cykliczna płatność: {next_item['name']} ({when}).")
+            suggestions.append(f"Masz {len(recurring)} aktywnych cyklicznych transakcji. Monitoruj je, aby uniknąć niespodzianek.")
+        else:
+            suggestions.append("Dodaj cykliczną transakcję, aby lepiej planować powtarzające się wydatki lub wpływy.")
+
+        if balance < 0:
+            suggestions.append("Saldo jest ujemne. Rozważ redukcję wydatków lub zwiększenie przychodów.")
+        else:
+            suggestions.append(f"Twoje saldo to {balance:.2f} zł. Utrzymuj rezerwę na nieprzewidziane wydatki.")
+
+        return suggestions
 
     def _save_transaction(self, transaction_id, kind, amount, account_id, tag, note, tx_date):
         if transaction_id is None:
