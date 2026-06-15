@@ -118,12 +118,13 @@ class AccountDialog(ctk.CTkToplevel):
 
 
 class AddTransactionDialog(ctk.CTkToplevel):
-    def __init__(self, parent, accounts, tags, on_saved, transaction=None):
+    def __init__(self, parent, accounts, tags, on_saved, transaction=None, edit_mode=False):
         super().__init__(parent)
         self.accounts = accounts
+        self.transaction_id = transaction['id'] if transaction and edit_mode else None
         self.current_kind = "Wypłata"
         
-        self.title("Nowy wpis")
+        self.title("Edytuj wpis" if edit_mode else "Nowy wpis")
         self.geometry("420x640")
         self.configure(fg_color="#1C1C1E") 
         self.transient(parent)
@@ -174,7 +175,7 @@ class AddTransactionDialog(ctk.CTkToplevel):
         self.footer_frame = ctk.CTkFrame(self, fg_color=self.cget("fg_color"), border_width=0, corner_radius=0)
         self.footer_frame.pack(fill="x", padx=0, pady=(0, 12))
 
-        self.save_btn = ctk.CTkButton(self.footer_frame, text="Dodaj wpis", fg_color="#FF3B30", hover_color="#D73229", font=("SF Pro Display", 14, "bold"), corner_radius=10, height=44, command=lambda: self._save(on_saved))
+        self.save_btn = ctk.CTkButton(self.footer_frame, text="Dodaj wpis" if self.transaction_id is None else "Zapisz zmiany", fg_color="#FF3B30", hover_color="#D73229", font=("SF Pro Display", 14, "bold"), corner_radius=10, height=44, command=lambda: self._save(on_saved))
         self.save_btn.pack(fill="x", padx=24, pady=0)
         
         self.bind('<Return>', lambda event: self._save(on_saved))
@@ -218,7 +219,7 @@ class AddTransactionDialog(ctk.CTkToplevel):
             tx_date = self.date_entry.get().strip() or str(date.today())
             note = self.note_entry.get().strip() or ""
             
-            on_saved(self.current_kind, amount, account['id'], self.tag_var.get(), note, tx_date)
+            on_saved(self.transaction_id, self.current_kind, amount, account['id'], self.tag_var.get(), note, tx_date)
             self.destroy()
         except ValueError as e:
             messagebox.showerror("Błąd walidacji", f"Nieprawidłowe dane: {str(e)}")

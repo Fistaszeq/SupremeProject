@@ -126,6 +126,43 @@ class SimpleBudgetDB:
             
             return cur.lastrowid
 
+    def update_transaction(self, transaction_id, kind, amount, account_id, tag, note, tx_date):
+        with self.conn:
+            cur = self.conn.cursor()
+            cur.execute("SELECT kind, amount, account_id FROM transactions WHERE id = ?", (int(transaction_id),))
+            old = cur.fetchone()
+            if old is None:
+                raise ValueError("Transakcja nie istnieje")
+
+            old_kind, old_amount, old_account_id = old[0], float(old[1]), int(old[2])
+            old_effect = old_amount if old_kind == "Wpłata" else -old_amount
+            new_effect = float(amount) if kind == "Wpłata" else -float(amount)
+
+            if old_account_id == int(account_id):
+                delta = new_effect - old_effect
+                cur.execute("UPDATE accounts SET balance = balance + ? WHERE id = ?", (delta, int(account_id)))
+            else:
+                cur.execute("UPDATE accounts SET balance = balance - ? WHERE id = ?", (-old_effect, old_account_id))
+                cur.execute("UPDATE accounts SET balance = balance + ? WHERE id = ?", (new_effect, int(account_id)))
+
+            cur.execute(
+                "UPDATE transactions SET kind = ?, amount = ?, account_id = ?, tag = ?, note = ?, created_at = ? WHERE id = ?",
+                (kind, float(amount), int(account_id), tag, note, tx_date, int(transaction_id)),
+            )
+
+    def delete_transaction(self, transaction_id):
+        with self.conn:
+            cur = self.conn.cursor()
+            cur.execute("SELECT kind, amount, account_id FROM transactions WHERE id = ?", (int(transaction_id),))
+            old = cur.fetchone()
+            if old is None:
+                return
+
+            old_kind, old_amount, old_account_id = old[0], float(old[1]), int(old[2])
+            effect = old_amount if old_kind == "Wpłata" else -old_amount
+            cur.execute("UPDATE accounts SET balance = balance - ? WHERE id = ?", (effect, old_account_id))
+            cur.execute("DELETE FROM transactions WHERE id = ?", (int(transaction_id),))
+
     def transactions(self):
         cur = self.conn.cursor()
         cur.execute(
