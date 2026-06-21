@@ -18,6 +18,9 @@ import matplotlib.pyplot as plt
 from budget_db import SimpleBudgetDB
 from budget_dialogs import AccountDialog, AddTransactionDialog, AccountDetailsDialog, RecurringTransactionDialog
 
+from collections import defaultdict
+from datetime import datetime, timedelta
+import numpy as np
 
 class SimpleBudgetApp(ctk.CTk):
     def __init__(self):
@@ -380,19 +383,28 @@ class SimpleBudgetApp(ctk.CTk):
                 bar_chart_container = ctk.CTkFrame(stat_frame, fg_color="transparent")
                 bar_chart_container.grid(row=1, column=1, sticky="nsew", padx=(6, 0), pady=(10, 0))
 
+                category_colors = {
+                    "Inne": "#6E5BE8", 
+                    "Jedzenie": "#34D399", 
+                    "Mieszkanie": "#F59E0B", 
+                    "Rozrywka": "#EC4899", 
+                    "Transport": "#3B82F6"
+                }
 
                 if sizes:
                     #Tworzenie wykresu kołowego
+                    default_color = "#FFE600"
+                    pie_colors = [category_colors.get(label, default_color) for label in labels]
+
                     fig, ax = plt.subplots(figsize=(4, 4), facecolor='#252837')
                     ax.set_facecolor('#252837')
 
-                    colors = ['#6E5BE8', '#95E8A8', '#F1C40F']
                     wedges, texts, autotexts = ax.pie(
                         sizes, labels=labels, 
-                        autopct='%1.0f%%', startangle=90,
-                        colors=colors[:len(sizes)],
-                        textprops=dict(color="#F8FAFC"), 
-                        wedgeprops={"width": 0.4, "edgecolor": "#252837"}
+                        autopct = '%1.0f%%', startangle=90,
+                        colors = pie_colors,
+                        textprops = dict(color="#F8FAFC"), 
+                        wedgeprops = {"width": 0.4, "edgecolor": "#252837"}
                     )
 
                     #Kolor tekstu na wykresie
@@ -414,23 +426,38 @@ class SimpleBudgetApp(ctk.CTk):
                 #Wykres slupkowy
                 from collections import defaultdict
                 from datetime import datetime, timedelta
+                import numpy as np
 
-                raw_daily_expenses = defaultdict(float)
+                                    #data: (kategoria: suma_wydatkow)
+                raw_daily_expenses = defaultdict(lambda: defaultdict(float))
+                categories = set()
                 for tx in self.db.transactions():
-                    if tx['kind'] != "Wpłata":
-                        date_str = tx['created_at'].split(" ") if " " in tx['created_at'] else tx['created_at']
-                        raw_daily_expenses[date_str] += float(tx['amount'])
+                    if tx["kind"] != "Wpłata":
+                        date_str = tx["created_at"].split(" ") if " " in tx["created_at"] else tx["created_at"]
+                        category = tx.get("tag", "Inne")
+
+                        raw_daily_expenses[date_str][category] += float(tx["amount"])
+                        categories.add(category)
+
+
+                sorted_categories = sorted(list(categories))
 
                 #Generwoanie ostatniego tygodnia
                 sorted_dates = []
-                daily_spent = []
+                days_count = 30
+
+                category_date = {ctg: [] for ctg in sorted_categories}
                 
                 today = datetime.now()
-                for i in range(6, -1, -1):
+                for i in range((days_count - 1), -1, -1):
                     day = today - timedelta(days=i)
                     date_str = day.strftime("%Y-%m-%d")
                     sorted_dates.append(date_str)
-                    daily_spent.append(raw_daily_expenses.get(date_str, 0.0))
+                    # daily_spent.append(raw_daily_expenses.get(date_str, 0.0))
+
+                    daily_expenses = raw_daily_expenses.get(date_str, {})
+                    for ctg in sorted_categories:
+                        category_date[ctg].append(daily_expenses.get(ctg, 0.0))
 
                 #Rysowanie wykresu
                 bar_chart_frame = ctk.CTkFrame(bar_chart_container, fg_color="#252837", corner_radius=10)
@@ -439,12 +466,24 @@ class SimpleBudgetApp(ctk.CTk):
                 fig_bar = Figure(figsize=(5, 3), facecolor='#252837')
                 ax_bar = fig_bar.add_subplot(111)
                 ax_bar.set_facecolor("#252837")
-                
-                bars = ax_bar.bar(sorted_dates, daily_spent, color="#6E5BE8", width=0.5)
-                ax_bar.set_title("Całkowite wydatki z ostatnich 7 dni", color="white", fontsize=12, fontweight="bold", pad=10)
+
+                bottom_values = np.zeros(days_count)
+
+                default_color = "#FFE600"
+
+                for idx, ctg in enumerate(sorted_categories):
+                    current_values = np.array(category_date[ctg])
+                    color = category_colors.get(ctg, default_color) #Zapetlanie kolorow, zobaczymy czy konieczne
+
+                    ax_bar.bar(sorted_dates, current_values, bottom=bottom_values, label=ctg, color=color, width=0.5)
+                    bottom_values += current_values
+
+                ax_bar.legend(facecolor="#252837", edgecolor="none", labelcolor="white", fontsize=8, loc="upper left")
+
+                ax_bar.set_title(f"Całkowite wydatki z ostatnich {days_count} dni", color="white", fontsize=12, fontweight="bold", pad=10)
                 ax_bar.tick_params(colors='white', labelsize=10, axis='x', rotation=45)
                 ax_bar.tick_params(colors='white', labelsize=10, axis='y')
-                
+
                 for spine in ax_bar.spines.values(): 
                     spine.set_visible(False)
                 fig_bar.tight_layout()
@@ -453,8 +492,10 @@ class SimpleBudgetApp(ctk.CTk):
                 canvas_bar.get_tk_widget().pack(fill="both", expand=True, padx=8, pady=8)
                 canvas_bar.draw()
 
+                # --------------------------------------------------------------------------------------
+
                 cashflow_frame = ctk.CTkFrame(bar_chart_container, fg_color="#252837", corner_radius=10)
-                cashflow_frame.pack(fill="both", expand=True, padx=8, pady=(0, 6))
+                cashflow_frame.pack(fill="both", expand=True, padx=8, pady=6)
 
                 from collections import defaultdict
                 from datetime import timedelta
@@ -698,7 +739,6 @@ class SimpleBudgetApp(ctk.CTk):
         else:
             self.db.update_transaction(transaction_id, kind, amount, account_id, tag, note, tx_date)
         self.trigger_render()
-
 
 #Uruchamianie aplikacji
 if __name__ == "__main__":
