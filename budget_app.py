@@ -51,6 +51,8 @@ class SimpleBudgetApp(ctk.CTk):
         self.main_container = ctk.CTkFrame(self, fg_color="#1B1D29", corner_radius=10)
         self.main_container.pack(fill="both", expand=True, padx=8, pady=(0, 8))
 
+        self.days_count = 14
+
         self.frames = {
             "Main": ctk.CTkFrame(self.main_container, fg_color="transparent"),
             "Statystyki": ctk.CTkFrame(self.main_container, fg_color="transparent")
@@ -444,17 +446,17 @@ class SimpleBudgetApp(ctk.CTk):
 
                 #Generwoanie ostatniego tygodnia
                 sorted_dates = []
-                days_count = 30
+                
+                if not hasattr(self, "days_count"):
+                    self.days_count = 14
 
                 category_date = {ctg: [] for ctg in sorted_categories}
                 
                 today = datetime.now()
-                for i in range((days_count - 1), -1, -1):
+                for i in range((self.days_count - 1), -1, -1):
                     day = today - timedelta(days=i)
                     date_str = day.strftime("%Y-%m-%d")
                     sorted_dates.append(date_str)
-                    # daily_spent.append(raw_daily_expenses.get(date_str, 0.0))
-
                     daily_expenses = raw_daily_expenses.get(date_str, {})
                     for ctg in sorted_categories:
                         category_date[ctg].append(daily_expenses.get(ctg, 0.0))
@@ -463,24 +465,44 @@ class SimpleBudgetApp(ctk.CTk):
                 bar_chart_frame = ctk.CTkFrame(bar_chart_container, fg_color="#252837", corner_radius=10)
                 bar_chart_frame.pack(fill="both", expand=True, padx=8, pady=6)
 
+                #Menu rozwijane
+                def on_days_count_change(option):
+                    self.days_count = int(option)
+                    ax_bar.set_title(f"Całkowite wydatki z ostatnich {option} dni", color="white", fontsize=12, fontweight="bold", pad=10) #inaczej nie dziala
+                    self.trigger_render()
+
+                days_count_menu_frame = ctk.CTkFrame(bar_chart_frame, fg_color="transparent")
+                days_count_menu_frame.pack(fill="x", padx=(10,4), pady=(4,0))
+                days_count_menu = ctk.CTkOptionMenu(
+                    days_count_menu_frame,
+                    width = 50,
+                    values = ["7", "14", "21", "28"],
+                    command = on_days_count_change,
+                    fg_color="#4b39bf",
+                    button_color="#6E5BE8",
+                    button_hover_color="#6E5BE8"
+                )
+                days_count_menu.pack(side="right")
+                days_count_menu.set(str(self.days_count))
+
                 fig_bar = Figure(figsize=(5, 3), facecolor='#252837')
                 ax_bar = fig_bar.add_subplot(111)
                 ax_bar.set_facecolor("#252837")
 
-                bottom_values = np.zeros(days_count)
+                bottom_values = np.zeros(self.days_count)
 
                 default_color = "#FFE600"
 
                 for idx, ctg in enumerate(sorted_categories):
                     current_values = np.array(category_date[ctg])
-                    color = category_colors.get(ctg, default_color) #Zapetlanie kolorow, zobaczymy czy konieczne
+                    color = category_colors.get(ctg, default_color)
 
                     ax_bar.bar(sorted_dates, current_values, bottom=bottom_values, label=ctg, color=color, width=0.5)
                     bottom_values += current_values
 
                 ax_bar.legend(facecolor="#252837", edgecolor="none", labelcolor="white", fontsize=8, loc="upper left")
 
-                ax_bar.set_title(f"Całkowite wydatki z ostatnich {days_count} dni", color="white", fontsize=12, fontweight="bold", pad=10)
+                ax_bar.set_title(f"Całkowite wydatki z ostatnich {self.days_count} dni", color="white", fontsize=12, fontweight="bold", pad=10)
                 ax_bar.tick_params(colors='white', labelsize=10, axis='x', rotation=45)
                 ax_bar.tick_params(colors='white', labelsize=10, axis='y')
 
