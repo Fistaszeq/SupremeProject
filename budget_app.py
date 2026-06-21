@@ -24,6 +24,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 import numpy as np
 
+
 class SimpleBudgetApp(ctk.CTk):
     def __init__(self):
         super().__init__()
@@ -54,6 +55,14 @@ class SimpleBudgetApp(ctk.CTk):
         self.main_container.pack(fill="both", expand=True, padx=8, pady=(0, 8))
 
         self.days_count = 14
+        self.default_color = "#FFE600"
+        self.category_colors = {
+                    "Inne": "#6E5BE8", 
+                    "Jedzenie": "#34D399", 
+                    "Mieszkanie": "#F59E0B", 
+                    "Rozrywka": "#EC4899", 
+                    "Transport": "#3B82F6"
+                }
 
         self.frames = {
             "Main": ctk.CTkFrame(self.main_container, fg_color="transparent"),
@@ -147,6 +156,21 @@ class SimpleBudgetApp(ctk.CTk):
             filtered.append(item)
 
         return filtered
+    
+    def adjust_font_color(self, hex_color):
+        try:
+            hex_color = hex_color.lstrip("#")
+            r = int(hex_color[0:2], 16)
+            g = int(hex_color[2:4], 16)
+            b = int(hex_color[4:6], 16)
+
+            #wzor na luminancje
+            lum = 0.299*r + 0.587*g + 0.114*b
+
+            return "#252837" if lum > 140 else "#F8FAFC"
+        except Exception:
+            return "#F8FAFC"
+
 
     def render(self):
         current_frame = self.frames[self.view_var]
@@ -158,7 +182,7 @@ class SimpleBudgetApp(ctk.CTk):
             #Zakladka main
             accounts = self.db.accounts()
             total = sum(a['balance'] for a in accounts)
-            color_family = ["#2563EB", "#1E3A8A", "#8B5CF6", "#4C1D95", "#10B981", "#064E3B", "#F59E0B", "#78350F"]
+            #color_family = ["#2563EB", "#1E3A8A", "#8B5CF6", "#4C1D95", "#10B981", "#064E3B", "#F59E0B", "#78350F"]
 
             current_frame.grid_columnconfigure(0, weight=1, uniform="group1")
             current_frame.grid_columnconfigure(1, weight=1, uniform="group1")
@@ -176,12 +200,13 @@ class SimpleBudgetApp(ctk.CTk):
                 ctk.CTkLabel(empty, text="Brak kont – dodaj pierwsze konto", text_color="#CBD5E1", font=("Segoe UI", 14)).pack(pady=18)
             else:
                 for idx, account in enumerate(accounts):
-                    card_color = color_family[idx % len(color_family)]
+                    card_color = account.get("color", "#3B82F6")
+                    text_color = self.adjust_font_color(card_color)
                     card = ctk.CTkFrame(body_left, fg_color=card_color, corner_radius=12)
                     card.pack(fill="x", padx=8, pady=6)
 
-                    ctk.CTkLabel(card, text=account['name'], text_color="#F8FAFC", font=("Segoe UI", 16, "bold")).pack(anchor="w", padx=16, pady=(12, 0))
-                    ctk.CTkLabel(card, text=f"{account['balance']:.2f} zł", text_color="#FFFFFF", font=("Segoe UI", 22, "bold")).pack(anchor="w", padx=16, pady=(0, 2))
+                    ctk.CTkLabel(card, text=account['name'], fg_color="transparent", text_color=text_color, font=("Segoe UI", 16, "bold")).pack(anchor="w", padx=16, pady=(12, 0))
+                    ctk.CTkLabel(card, text=f"{account['balance']:.2f} zł", fg_color="transparent", text_color=text_color, font=("Segoe UI", 22, "bold")).pack(anchor="w", padx=16, pady=(0, 2))
 
                     if account.get('last_date'):
                         sign = "+" if account['last_kind'] == "Wpłata" else "-"
@@ -189,7 +214,7 @@ class SimpleBudgetApp(ctk.CTk):
                     else:
                         last_info = "Ostatnio: Brak transakcji"
 
-                    ctk.CTkLabel(card, text=last_info, text_color="#AEAEB2", font=("Segoe UI", 11)).pack(anchor="w", padx=16, pady=(0, 10))
+                    ctk.CTkLabel(card, text=last_info, text_color=text_color, font=("Segoe UI", 11)).pack(anchor="w", padx=16, pady=(0, 10))
 
                     btn_frame = ctk.CTkFrame(card, fg_color="transparent")
                     btn_frame.pack(fill="x", padx=16, pady=(0, 12))
@@ -254,7 +279,7 @@ class SimpleBudgetApp(ctk.CTk):
                     ctk.CTkButton(bottom_row, text="Edytuj", width=60, height=24, fg_color="#0A84FF", hover_color="#0066CC", text_color="#FFFFFF", font=("Segoe UI", 11, "bold"), command=lambda t=item: self.edit_transaction(t)).pack(side="right", padx=(0, 8))
 
             upcoming_items = self._upcoming_recurring(limit=5)
-            due_panel = ctk.CTkFrame(body_right, fg_color="#0F172A", corner_radius=14)
+            due_panel = ctk.CTkFrame(body_right, fg_color="#111217", corner_radius=14)
             due_panel.pack(fill="x", padx=8, pady=(0, 8))
             ctk.CTkLabel(due_panel, text="Nadchodzące płatności", text_color="#F8FAFC", font=("Segoe UI", 16, "bold")).pack(anchor="w", padx=14, pady=(10, 6))
             if upcoming_items:
@@ -281,7 +306,7 @@ class SimpleBudgetApp(ctk.CTk):
                 ctk.CTkLabel(due_panel, text="Brak nadchodzących aktywnych płatności.", text_color="#CBD5E1", font=("Segoe UI", 13), wraplength=360, justify="left").pack(fill="x", padx=14, pady=(8, 14))
 
             assistant_insights = self._assistant_advice()
-            assistant = ctk.CTkFrame(body_right, fg_color="#08101D", corner_radius=14)
+            assistant = ctk.CTkFrame(body_right, fg_color="#111217", corner_radius=14)
             assistant.pack(fill="x", padx=8, pady=(0, 8))
             ctk.CTkLabel(assistant, text="Asystent AI", text_color="#F8FAFC", font=("Segoe UI", 16, "bold")).pack(anchor="w", padx=14, pady=(10, 6))
             for insight in assistant_insights:
@@ -332,13 +357,14 @@ class SimpleBudgetApp(ctk.CTk):
 
             accounts = self.db.accounts()
             stats = self.db.stats()
+            print(stats)
             total_balance = sum(a['balance'] for a in accounts)
             total_spent = sum(item['spent'] for item in stats)
             total_income = sum(item['income'] for item in stats)
             active_recurring = sum(1 for t in self.db.recurring_transactions() if t.get('active') == 1)
             top_spent_tag = next((item['tag'] for item in sorted(stats, key=lambda x: x['spent'], reverse=True) if item['spent'] > 0), 'Brak')
 
-            summary_panel = ctk.CTkFrame(stat_scroll, fg_color="#111217", corner_radius=16)
+            summary_panel = ctk.CTkFrame(stat_scroll, fg_color="#252837", corner_radius=16)
             summary_panel.pack(fill="x", padx=20, pady=(0, 16))
             summary_panel.grid_columnconfigure((0, 1, 2, 3), weight=1)
 
@@ -350,16 +376,17 @@ class SimpleBudgetApp(ctk.CTk):
             ]
 
             for idx, (title, value, color) in enumerate(summary_cards):
-                card = ctk.CTkFrame(summary_panel, fg_color="#1F2937", corner_radius=14)
+                card = ctk.CTkFrame(summary_panel, fg_color="#252837", corner_radius=14)
                 card.grid(row=0, column=idx, sticky="nsew", padx=(10 if idx > 0 else 14, 14 if idx < 3 else 14), pady=14)
                 ctk.CTkLabel(card, text=title, text_color="#CBD5E1", font=("Segoe UI", 11, "bold")).pack(anchor="w", padx=14, pady=(14, 6))
                 ctk.CTkLabel(card, text=value, text_color=color, font=("Segoe UI", 20, "bold")).pack(anchor="w", padx=14, pady=(0, 12))
 
             if top_spent_tag != 'Brak':
-                trend_card = ctk.CTkFrame(stat_scroll, fg_color="#111217", corner_radius=16)
+                tmp_color = self.category_colors.get(top_spent_tag) #Kolor tekstu w kolorze danej kategorii
+                trend_card = ctk.CTkFrame(stat_scroll, fg_color="#252837", corner_radius=16)
                 trend_card.pack(fill="x", padx=20, pady=(0, 12))
                 ctk.CTkLabel(trend_card, text="Największa kategoria wydatków", text_color="#F8FAFC", font=("Segoe UI", 14, "bold")).pack(anchor="w", padx=14, pady=(14, 6))
-                ctk.CTkLabel(trend_card, text=f"{top_spent_tag}", text_color="#FCA5A5", font=("Segoe UI", 18, "bold")).pack(anchor="w", padx=14, pady=(0, 14))
+                ctk.CTkLabel(trend_card, text=f"{top_spent_tag}", text_color=tmp_color, font=("Segoe UI", 18, "bold")).pack(anchor="w", padx=14, pady=(0, 14))
 
             stat_frame = ctk.CTkFrame(stat_scroll, fg_color="transparent")
             stat_frame.pack(fill="both", expand=True)
@@ -388,18 +415,9 @@ class SimpleBudgetApp(ctk.CTk):
                 bar_chart_container = ctk.CTkFrame(stat_frame, fg_color="transparent")
                 bar_chart_container.grid(row=1, column=1, sticky="nsew", padx=(6, 0), pady=(10, 0))
 
-                category_colors = {
-                    "Inne": "#6E5BE8", 
-                    "Jedzenie": "#34D399", 
-                    "Mieszkanie": "#F59E0B", 
-                    "Rozrywka": "#EC4899", 
-                    "Transport": "#3B82F6"
-                }
-
                 if sizes:
                     #Tworzenie wykresu kołowego
-                    default_color = "#FFE600"
-                    pie_colors = [category_colors.get(label, default_color) for label in labels]
+                    pie_colors = [self.category_colors.get(label, self.default_color) for label in labels]
 
                     fig, ax = plt.subplots(figsize=(4, 4), facecolor='#252837')
                     ax.set_facecolor('#252837')
@@ -429,9 +447,6 @@ class SimpleBudgetApp(ctk.CTk):
                     ctk.CTkLabel(pie_chart_frame, text="Brak danych o wydatkach", text_color="#CBD5E1", font=("Segoe UI", 14)).pack(expand=True, pady=20)
 
                 #Wykres slupkowy
-                from collections import defaultdict
-                from datetime import datetime, timedelta
-                import numpy as np
 
                                     #data: (kategoria: suma_wydatkow)
                 raw_daily_expenses = defaultdict(lambda: defaultdict(float))
@@ -494,11 +509,9 @@ class SimpleBudgetApp(ctk.CTk):
 
                 bottom_values = np.zeros(self.days_count)
 
-                default_color = "#FFE600"
-
                 for idx, ctg in enumerate(sorted_categories):
                     current_values = np.array(category_date[ctg])
-                    color = category_colors.get(ctg, default_color)
+                    color = self.category_colors.get(ctg, self.default_color)
 
                     ax_bar.bar(sorted_dates, current_values, bottom=bottom_values, label=ctg, color=color, width=0.5)
                     bottom_values += current_values
@@ -521,9 +534,6 @@ class SimpleBudgetApp(ctk.CTk):
 
                 cashflow_frame = ctk.CTkFrame(bar_chart_container, fg_color="#252837", corner_radius=10)
                 cashflow_frame.pack(fill="both", expand=True, padx=8, pady=6)
-
-                from collections import defaultdict
-                from datetime import timedelta
 
                 monthly_spending = defaultdict(float)
                 monthly_income = defaultdict(float)
