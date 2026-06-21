@@ -55,7 +55,9 @@ class SimpleBudgetApp(ctk.CTk):
             "lightest_color": "#C5B09B"  
         }
 
-        self.curr_mode_colors = self.light_mode_colors
+        self.mode_var = ctk.StringVar(value="on")
+
+        self.curr_mode_colors = self.dark_mode_colors
         self.curr_text_color = self.adjust_font_color(self.curr_mode_colors.get("darkest_color", "#111217"))
 
         self.configure(fg_color=self.curr_mode_colors.get("darkest_color", "#111217"))
@@ -71,13 +73,13 @@ class SimpleBudgetApp(ctk.CTk):
         self.history_tag_var = tk.StringVar(value="Wszystkie")
         self.history_period_var = tk.StringVar(value="Ostatnie 30 dni")
 
+        ctk.CTkButton(top, text="Ustawienia", text_color=self.curr_text_color, fg_color=self.curr_mode_colors.get("sc_darkest_color", "#1B1D29"), hover_color=self.curr_mode_colors.get("darkest_color", "#111217"), font=("Segoe UI", 14, "bold"), command=lambda: self.switch_view("Ustawienia")).pack(side="right", padx=(4, 4))
         ctk.CTkButton(top, text="Statystyki", text_color=self.curr_text_color, fg_color=self.curr_mode_colors.get("sc_darkest_color", "#1B1D29"),
                       hover_color=self.curr_mode_colors.get("darkest_color", "#111217"), font=("Segoe UI", 14, "bold"), command=lambda:
                       self.switch_view("Statystyki")).pack(side="right", padx=(4, 8))
         ctk.CTkButton(top, text="Strona główna", text_color=self.curr_text_color, fg_color=self.curr_mode_colors.get("sc_darkest_color", "#1B1D29"),
                       hover_color=self.curr_mode_colors.get("darkest_color", "#111217"), font=("Segoe UI", 14, "bold"), command=lambda:
                       self.switch_view("Main")).pack(side="right", padx=(4, 4))
-
         self.main_container = ctk.CTkFrame(self, fg_color=self.curr_mode_colors.get("sc_darkest_color", "#1B1D29"), corner_radius=10)
         self.main_container.pack(fill="both", expand=True, padx=8, pady=(0, 8))
 
@@ -188,7 +190,7 @@ class SimpleBudgetApp(ctk.CTk):
             #wzor na luminancje
             lum = 0.299*r + 0.587*g + 0.114*b
 
-            return "#252837" if lum > 140 else self.curr_text_color
+            return "#252837" if lum > 140 else "#FFFFFF"
         except Exception:
             return self.curr_text_color
 
@@ -203,7 +205,6 @@ class SimpleBudgetApp(ctk.CTk):
             #Zakladka main
             accounts = self.db.accounts()
             total = sum(a['balance'] for a in accounts)
-            #color_family = ["#2563EB", "#1E3A8A", "#8B5CF6", "#4C1D95", "#10B981", "#064E3B", "#F59E0B", "#78350F"]
 
             current_frame.grid_columnconfigure(0, weight=1, uniform="group1")
             current_frame.grid_columnconfigure(1, weight=1, uniform="group1")
@@ -612,57 +613,55 @@ class SimpleBudgetApp(ctk.CTk):
                     info_text = f"Wydano: {item['spent']:.2f} zł  •  Wpłaty: {item['income']:.2f} zł"
                     ctk.CTkLabel(card, text=info_text, text_color=self.curr_text_color, font=("Segoe UI", 12)).pack(side="right", padx=15)
             else:
-                ctk.CTkLabel(stat_left, text="Brak danych – dodaj pierwszy wpis", text_color="#CBD5E1", font=("Segoe UI", 13)).pack(pady=20)
+                ctk.CTkLabel(stat_left, text="Brak danych – dodaj pierwszy wpis", text_color=self.curr_text_color, font=("Segoe UI", 13)).pack(pady=20)
         
         elif self.view_var == "Ustawienia":
             settings_scroll = ctk.CTkScrollableFrame(current_frame, fg_color="transparent")
             settings_scroll.pack(fill="both", expand=True)
 
-            ctk.CTkLabel(settings_scroll, text="Ustawienia Aplikacji", text_color="#F8FAFC", font=("Segoe UI", 24, "bold")).pack(anchor="w", padx=20, pady=(20, 10))
+            ctk.CTkLabel(settings_scroll, text="Ustawienia Aplikacji", text_color=self.curr_text_color, font=("Segoe UI", 24, "bold")).pack(anchor="w", padx=20, pady=(20, 10))
 
             # wygląd karty
-            appearance_card = ctk.CTkFrame(settings_scroll, fg_color="#252837", corner_radius=12)
+            appearance_card = ctk.CTkFrame(settings_scroll, fg_color=self.curr_mode_colors.get("middle_color", "#252837"), corner_radius=12)
             appearance_card.pack(fill="x", padx=20, pady=10)
-            ctk.CTkLabel(appearance_card, text="WYGLĄD", text_color="#94A3B8", font=("Segoe UI", 11, "bold")).pack(anchor="w", padx=16, pady=(12, 5))
+            ctk.CTkLabel(appearance_card, text="WYGLĄD", text_color=self.curr_text_color, font=("Segoe UI", 11, "bold")).pack(anchor="w", padx=16, pady=(12, 5))
 
-            def change_appearance_mode(new_mode):
-                # Funkcja zmieniająca motyw CustomTkinter
-                mode = "Dark" if new_mode == "Ciemny" else "Light"
-                ctk.set_appearance_mode(mode)
+            def change_appearance_mode():
+                mode = self.mode_var.get()
+                if mode == "on":
+                    self.curr_mode_colors = self.dark_mode_colors
+                elif mode == "off":
+                    self.curr_mode_colors = self.light_mode_colors
+                self.curr_text_color = self.adjust_font_color(self.curr_mode_colors.get("darkest_color", "#111217"))
+                self.trigger_render()
 
             mode_row = ctk.CTkFrame(appearance_card, fg_color="transparent")
             mode_row.pack(fill="x", padx=16, pady=(0, 12))
-            ctk.CTkLabel(mode_row, text="Motyw interfejsu", text_color="#F8FAFC", font=("Segoe UI", 15, "bold")).pack(side="left")
+            ctk.CTkLabel(mode_row, text="Motyw interfejsu", text_color=self.curr_text_color, font=("Segoe UI", 15, "bold")).pack(side="left")
             
-            # pobranie aktualnego motywu
-            current_mode = "Ciemny" if ctk.get_appearance_mode() == "Dark" else "Jasny"
-            mode_var = ctk.StringVar(value=current_mode)
-            
-            # MAJA TUTAJ JEST COMBO BOX KTORY UZYWA FUNKCJI CHANGE_APPERANCE_MODE ZDEFINIOWANEJ W LINIJCE 596.
-            # ALE TO ZMIENIA TYLKO OGOLNY WYGLAD WSZYSTKICH 'DOMYSLNYCH' ELEMENTOW
-            # MY USTAWILISMY TWARDO KOLORY WSZYSTKICH PRZYCISKOW ITP, WIEC TO NIE DZIALA.
-            ctk.CTkComboBox(mode_row, variable=mode_var, values=["Ciemny", "Jasny"], command=change_appearance_mode, fg_color="#1B1D29", border_color="#3A3A3C", button_color="#3A3A3C", text_color="#FFFFFF", width=120).pack(side="right")
+            mode_switch = ctk.CTkSwitch(mode_row, text="", button_color=self.curr_text_color, variable=self.mode_var, command=change_appearance_mode, onvalue="on", offvalue="off", width=40)
+            mode_switch.pack(side="right")
 
             # PREFERENCJE
-            prefs_card = ctk.CTkFrame(settings_scroll, fg_color="#252837", corner_radius=12)
+            prefs_card = ctk.CTkFrame(settings_scroll, fg_color=self.curr_mode_colors.get("middle_color", "#252837"), corner_radius=12)
             prefs_card.pack(fill="x", padx=20, pady=10)
-            ctk.CTkLabel(prefs_card, text="PREFERENCJE", text_color="#94A3B8", font=("Segoe UI", 11, "bold")).pack(anchor="w", padx=16, pady=(12, 5))
+            ctk.CTkLabel(prefs_card, text="PREFERENCJE", text_color=self.curr_text_color, font=("Segoe UI", 11, "bold")).pack(anchor="w", padx=16, pady=(12, 5))
 
             # Włączenie powiadomień
             notif_row = ctk.CTkFrame(prefs_card, fg_color="transparent")
             notif_row.pack(fill="x", padx=16, pady=(0, 16))
-            ctk.CTkLabel(notif_row, text="Powiadomienia o przekroczeniu budżetu", text_color="#F8FAFC", font=("Segoe UI", 15, "bold")).pack(side="left")
-            ctk.CTkSwitch(notif_row, text="", progress_color="#34C759", button_color="#FFFFFF", width=40).pack(side="right")
+            ctk.CTkLabel(notif_row, text="Powiadomienia o przekroczeniu budżetu", text_color=self.curr_text_color, font=("Segoe UI", 15, "bold")).pack(side="left")
+            ctk.CTkSwitch(notif_row, text="", progress_color="#34C759", button_color=self.curr_text_color, width=40).pack(side="right")
 
             # ZARZĄDZANIE DANYMI
-            data_card = ctk.CTkFrame(settings_scroll, fg_color="#252837", corner_radius=12)
+            data_card = ctk.CTkFrame(settings_scroll, fg_color=self.curr_mode_colors.get("middle_color", "#252837"), corner_radius=12)
             data_card.pack(fill="x", padx=20, pady=10)
-            ctk.CTkLabel(data_card, text="ZARZĄDZANIE DANYMI", text_color="#94A3B8", font=("Segoe UI", 11, "bold")).pack(anchor="w", padx=16, pady=(12, 5))
+            ctk.CTkLabel(data_card, text="ZARZĄDZANIE DANYMI", text_color=self.curr_text_color, font=("Segoe UI", 11, "bold")).pack(anchor="w", padx=16, pady=(12, 5))
 
             # Export do CSV 
             export_row = ctk.CTkFrame(data_card, fg_color="transparent")
             export_row.pack(fill="x", padx=16, pady=(0, 10))
-            ctk.CTkLabel(export_row, text="Eksportuj historię transakcji do CSV", text_color="#F8FAFC", font=("Segoe UI", 15, "bold")).pack(side="left")
+            ctk.CTkLabel(export_row, text="Eksportuj historię transakcji do CSV", text_color=self.curr_text_color, font=("Segoe UI", 15, "bold")).pack(side="left")
             ctk.CTkButton(export_row, text="Eksportuj", fg_color="#0A84FF", hover_color="#0066CC", font=("Segoe UI", 12, "bold"), width=90, command=self.export_to_csv).pack(side="right")
 
             # Reset aplikacji

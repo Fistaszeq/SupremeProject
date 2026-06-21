@@ -66,11 +66,11 @@ class SimpleBudgetDB:
                 cur.executemany(
                     "INSERT INTO tags (name, color) VALUES (?, ?)",
                     [
-                        ("Jedzenie", "#F97316"),
-                        ("Transport", "#3B82F6"),
-                        ("Mieszkanie", "#8B5CF6"),
+                        ("Inne", "#6E5BE8"),
+                        ("Jedzenie", "#34D399"),
+                        ("Mieszkanie", "#F59E0B"),
                         ("Rozrywka", "#EC4899"),
-                        ("Inne", "#64748B"),
+                        ("Transport", "#3B82F6"),
                     ],
                 )
 
@@ -304,6 +304,7 @@ class SimpleBudgetDB:
                         "UPDATE recurring_transactions SET next_date = ? WHERE id = ?",
                         (str(updated_date), int(template['id'])),
                     )
+
 
     def factory_reset(self):
         self.conn.close()
