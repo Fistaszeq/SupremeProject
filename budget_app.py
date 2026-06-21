@@ -7,6 +7,9 @@ asynchronicznego ładowania widoków. Wzbogacony o wykres kołowy statystyk.
 import tkinter as tk
 from tkinter import messagebox
 import customtkinter as ctk
+from datetime import datetime
+import csv
+from tkinter import messagebox, filedialog
 
 import matplotlib
 matplotlib.use("TkAgg")
@@ -84,7 +87,8 @@ class SimpleBudgetApp(ctk.CTk):
 
         self.frames = {
             "Main": ctk.CTkFrame(self.main_container, fg_color="transparent"),
-            "Statystyki": ctk.CTkFrame(self.main_container, fg_color="transparent")
+            "Statystyki": ctk.CTkFrame(self.main_container, fg_color="transparent"),
+            "Ustawienia": ctk.CTkFrame(self.main_container, fg_color="transparent")
         }
 
         self.loading_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
@@ -608,7 +612,64 @@ class SimpleBudgetApp(ctk.CTk):
                     info_text = f"Wydano: {item['spent']:.2f} zł  •  Wpłaty: {item['income']:.2f} zł"
                     ctk.CTkLabel(card, text=info_text, text_color=self.curr_text_color, font=("Segoe UI", 12)).pack(side="right", padx=15)
             else:
-                ctk.CTkLabel(stat_left, text="Brak danych – dodaj pierwszy wpis", text_color=self.curr_text_color, font=("Segoe UI", 13)).pack(pady=20)
+                ctk.CTkLabel(stat_left, text="Brak danych – dodaj pierwszy wpis", text_color="#CBD5E1", font=("Segoe UI", 13)).pack(pady=20)
+        
+        elif self.view_var == "Ustawienia":
+            settings_scroll = ctk.CTkScrollableFrame(current_frame, fg_color="transparent")
+            settings_scroll.pack(fill="both", expand=True)
+
+            ctk.CTkLabel(settings_scroll, text="Ustawienia Aplikacji", text_color="#F8FAFC", font=("Segoe UI", 24, "bold")).pack(anchor="w", padx=20, pady=(20, 10))
+
+            # wygląd karty
+            appearance_card = ctk.CTkFrame(settings_scroll, fg_color="#252837", corner_radius=12)
+            appearance_card.pack(fill="x", padx=20, pady=10)
+            ctk.CTkLabel(appearance_card, text="WYGLĄD", text_color="#94A3B8", font=("Segoe UI", 11, "bold")).pack(anchor="w", padx=16, pady=(12, 5))
+
+            def change_appearance_mode(new_mode):
+                # Funkcja zmieniająca motyw CustomTkinter
+                mode = "Dark" if new_mode == "Ciemny" else "Light"
+                ctk.set_appearance_mode(mode)
+
+            mode_row = ctk.CTkFrame(appearance_card, fg_color="transparent")
+            mode_row.pack(fill="x", padx=16, pady=(0, 12))
+            ctk.CTkLabel(mode_row, text="Motyw interfejsu", text_color="#F8FAFC", font=("Segoe UI", 15, "bold")).pack(side="left")
+            
+            # pobranie aktualnego motywu
+            current_mode = "Ciemny" if ctk.get_appearance_mode() == "Dark" else "Jasny"
+            mode_var = ctk.StringVar(value=current_mode)
+            
+            # MAJA TUTAJ JEST COMBO BOX KTORY UZYWA FUNKCJI CHANGE_APPERANCE_MODE ZDEFINIOWANEJ W LINIJCE 596.
+            # ALE TO ZMIENIA TYLKO OGOLNY WYGLAD WSZYSTKICH 'DOMYSLNYCH' ELEMENTOW
+            # MY USTAWILISMY TWARDO KOLORY WSZYSTKICH PRZYCISKOW ITP, WIEC TO NIE DZIALA.
+            ctk.CTkComboBox(mode_row, variable=mode_var, values=["Ciemny", "Jasny"], command=change_appearance_mode, fg_color="#1B1D29", border_color="#3A3A3C", button_color="#3A3A3C", text_color="#FFFFFF", width=120).pack(side="right")
+
+            # PREFERENCJE
+            prefs_card = ctk.CTkFrame(settings_scroll, fg_color="#252837", corner_radius=12)
+            prefs_card.pack(fill="x", padx=20, pady=10)
+            ctk.CTkLabel(prefs_card, text="PREFERENCJE", text_color="#94A3B8", font=("Segoe UI", 11, "bold")).pack(anchor="w", padx=16, pady=(12, 5))
+
+            # Włączenie powiadomień
+            notif_row = ctk.CTkFrame(prefs_card, fg_color="transparent")
+            notif_row.pack(fill="x", padx=16, pady=(0, 16))
+            ctk.CTkLabel(notif_row, text="Powiadomienia o przekroczeniu budżetu", text_color="#F8FAFC", font=("Segoe UI", 15, "bold")).pack(side="left")
+            ctk.CTkSwitch(notif_row, text="", progress_color="#34C759", button_color="#FFFFFF", width=40).pack(side="right")
+
+            # ZARZĄDZANIE DANYMI
+            data_card = ctk.CTkFrame(settings_scroll, fg_color="#252837", corner_radius=12)
+            data_card.pack(fill="x", padx=20, pady=10)
+            ctk.CTkLabel(data_card, text="ZARZĄDZANIE DANYMI", text_color="#94A3B8", font=("Segoe UI", 11, "bold")).pack(anchor="w", padx=16, pady=(12, 5))
+
+            # Export do CSV 
+            export_row = ctk.CTkFrame(data_card, fg_color="transparent")
+            export_row.pack(fill="x", padx=16, pady=(0, 10))
+            ctk.CTkLabel(export_row, text="Eksportuj historię transakcji do CSV", text_color="#F8FAFC", font=("Segoe UI", 15, "bold")).pack(side="left")
+            ctk.CTkButton(export_row, text="Eksportuj", fg_color="#0A84FF", hover_color="#0066CC", font=("Segoe UI", 12, "bold"), width=90, command=self.export_to_csv).pack(side="right")
+
+            # Reset aplikacji
+            danger_row = ctk.CTkFrame(data_card, fg_color="transparent")
+            danger_row.pack(fill="x", padx=16, pady=(0, 16))
+            ctk.CTkLabel(danger_row, text="Zresetuj aplikację (Usuń wszystkie dane)", text_color="#FF3B30", font=("Segoe UI", 15, "bold")).pack(side="left")
+            ctk.CTkButton(danger_row, text="Resetuj", fg_color="#FF3B30", hover_color="#D73229", font=("Segoe UI", 12, "bold"), width=90, command=self.reset_application).pack(side="right")
 
     def add_account(self):
         AccountDialog(self, on_saved=self._save_account)
@@ -623,6 +684,86 @@ class SimpleBudgetApp(ctk.CTk):
         if messagebox.askyesno("Potwierdzenie", f"Czy na pewno chcesz usunąć konto '{account['name']}'?\nUsunięte zostaną też przypisane wpisy!"):
             self.db.delete_account(account['id'])
             self.trigger_render()
+
+    def reset_application(self):
+        """
+        Twardy reset aplikacji do ustawień fabrycznych.
+        1) Pyta użytkownika czy jest pewny swojej decyji. 
+        2) Jeśli tak, to usuwa i tworzy nowy database.
+        3) Re-renderuje okno na nowo.
+        4) Wypisuje komunikat o pomyślnym zakończeniu operacji.
+        """
+
+        # Okienko z zapytaniem (confirm będzie True albo False)
+        confirm = messagebox.askyesno(
+            "Krytyczne Ostrzeżenie", 
+            "Czy na pewno chcesz zresetować aplikację?\n\nTa operacja bezpowrotnie usunie WSZYSTKIE Twoje konta i całą historię transakcji. Nie można tego cofnąć!"
+        )
+        
+        if confirm:
+            self.db.factory_reset()
+            
+            # Ponowny render
+            self.trigger_render()
+            
+            # Informacja dla użytkownika
+            messagebox.showinfo("Reset", "Aplikacja została przywrócona do stanu fabrycznego.")
+
+    def export_to_csv(self):
+        """
+        Eksportuje historię transakcji do pliku CSV.
+        1) Pobiera transakcje z bazy danych.
+        2) Waliduje, czy transakcje istnieją.
+        3) Wywołuje okienko z pytaniem o miejsce zapisu oraz nazwę pliku.
+        4) Po zatwierdzeniu próbuje zapisać utworzyć i zapisać plik.
+        """
+        # Pobieranie danych
+        transactions = self.db.transactions()
+        
+        if not transactions:
+            messagebox.showinfo("Brak danych", "Nie ma żadnych transakcji do wyeksportowania.")
+            return
+
+        # Wywołanie okna dialogowego zapisu pliku
+        filepath = filedialog.asksaveasfilename(
+            defaultextension=".csv",
+            filetypes=[("Pliki CSV", "*.csv"), ("Wszystkie pliki", "*.*")],
+            title="Zapisz historię transakcji",
+            initialfile="BudgetFlow_Historia.csv"
+        )
+
+        # Jeśli użytkownik anulował 
+        if not filepath:
+            return
+
+        # Zapisywanie do pliku
+        try:
+            # Używamy 'utf-8-sig', dzięki temu excel rozpozna polskie znaki
+            with open(filepath, mode='w', newline='', encoding='utf-8-sig') as file:
+                
+                # Definiujemy, które pola ze słownika chcemy wyciągnąć i w jakiej kolejności
+                fieldnames = ['created_at', 'kind', 'amount', 'account_name', 'tag', 'note']
+                writer = csv.DictWriter(file, fieldnames=fieldnames, delimiter=';')
+                
+                writer.writerow({
+                    'created_at': 'Data',
+                    'kind': 'Rodzaj',
+                    'amount': 'Kwota',
+                    'account_name': 'Konto',
+                    'tag': 'Kategoria',
+                    'note': 'Notatka'
+                })
+                
+                # Zapisujemy właściwe dane z bazy
+                for tx in transactions:
+                    # Filtrujemy dane, na wypadek gdyby współpracownik dodał do bazy inne, niepotrzebne w CSV pola
+                    filtered_tx = {k: tx.get(k, '') for k in fieldnames}
+                    writer.writerow(filtered_tx)
+                    
+            messagebox.showinfo("Sukces", f"Pomyślnie wyeksportowano historię do pliku:\n{filepath}")
+            
+        except Exception as e: 
+            messagebox.showerror("Błąd", f"Wystąpił błąd podczas zapisu pliku:\n{str(e)}")
 
     def _save_account(self, account_id, name, balance, color):
         if account_id is None:

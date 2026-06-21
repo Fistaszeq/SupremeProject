@@ -304,3 +304,13 @@ class SimpleBudgetDB:
                         "UPDATE recurring_transactions SET next_date = ? WHERE id = ?",
                         (str(updated_date), int(template['id'])),
                     )
+
+    def factory_reset(self):
+        self.conn.close()
+        if os.path.exists(DB_FILE):
+            os.remove(DB_FILE)
+        
+        self.conn = sqlite3.connect(DB_FILE, check_same_thread=False)
+        self.conn.row_factory = sqlite3.Row
+
+        self._init_schema()
