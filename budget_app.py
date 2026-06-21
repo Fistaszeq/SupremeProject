@@ -152,6 +152,21 @@ class SimpleBudgetApp(ctk.CTk):
             filtered.append(item)
 
         return filtered
+    
+    def adjust_font_color(self, hex_color):
+        try:
+            hex_color = hex_color.lstrip("#")
+            r = int(hex_color[0:2], 16)
+            g = int(hex_color[2:4], 16)
+            b = int(hex_color[4:6], 16)
+
+            #wzor na luminancje
+            lum = 0.299*r + 0.587*g + 0.114*b
+
+            return "#252837" if lum > 140 else "#F8FAFC"
+        except Exception:
+            return "#F8FAFC"
+
 
     def render(self):
         current_frame = self.frames[self.view_var]
@@ -182,11 +197,12 @@ class SimpleBudgetApp(ctk.CTk):
             else:
                 for idx, account in enumerate(accounts):
                     card_color = account.get("color", "#3B82F6")
+                    text_color = self.adjust_font_color(card_color)
                     card = ctk.CTkFrame(body_left, fg_color=card_color, corner_radius=12)
                     card.pack(fill="x", padx=8, pady=6)
 
-                    ctk.CTkLabel(card, text=account['name'], fg_color="transparent", text_color="#FFFFFF", font=("Segoe UI", 16, "bold")).pack(anchor="w", padx=16, pady=(12, 0))
-                    ctk.CTkLabel(card, text=f"{account['balance']:.2f} zł", fg_color="transparent", text_color="#FFFFFF", font=("Segoe UI", 22, "bold")).pack(anchor="w", padx=16, pady=(0, 2))
+                    ctk.CTkLabel(card, text=account['name'], fg_color="transparent", text_color=text_color, font=("Segoe UI", 16, "bold")).pack(anchor="w", padx=16, pady=(12, 0))
+                    ctk.CTkLabel(card, text=f"{account['balance']:.2f} zł", fg_color="transparent", text_color=text_color, font=("Segoe UI", 22, "bold")).pack(anchor="w", padx=16, pady=(0, 2))
 
                     if account.get('last_date'):
                         sign = "+" if account['last_kind'] == "Wpłata" else "-"
@@ -194,7 +210,7 @@ class SimpleBudgetApp(ctk.CTk):
                     else:
                         last_info = "Ostatnio: Brak transakcji"
 
-                    ctk.CTkLabel(card, text=last_info, text_color="#AEAEB2", font=("Segoe UI", 11)).pack(anchor="w", padx=16, pady=(0, 10))
+                    ctk.CTkLabel(card, text=last_info, text_color=text_color, font=("Segoe UI", 11)).pack(anchor="w", padx=16, pady=(0, 10))
 
                     btn_frame = ctk.CTkFrame(card, fg_color="transparent")
                     btn_frame.pack(fill="x", padx=16, pady=(0, 12))
