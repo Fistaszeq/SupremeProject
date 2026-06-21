@@ -41,10 +41,11 @@ class AccountDialog(ctk.CTkToplevel):
         ctk.CTkLabel(self, text="KOLOR IDENTYFIKACYJNY", text_color="#8E8E93", font=("SF Pro Display", 11, "bold"), anchor="w").pack(fill="x", padx=24)
         
         self.color_map = {
-            "Niebieski": "#2563EB",
-            "Fioletowy": "#8B5CF6",
-            "Zielony": "#10B981",
-            "Bursztynowy": "#F59E0B",
+            "Fioletowy": "#6E5BE8", 
+            "Zielony": "#34D399", 
+            "Bursztynowy": "#F59E0B", 
+            "Różowy": "#EC4899", 
+            "Niebieski": "#3B82F6",
             "Własny...": "custom"
         }
         self.reverse_color_map = {v: k for k, v in self.color_map.items()}
