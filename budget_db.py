@@ -1,11 +1,10 @@
 """
-Moduł bazy danych dla aplikacji budżetowej.
+Moduł bazy danych.
 """
 
-import calendar
 import os
 import sqlite3
-from datetime import date, datetime, timedelta
+from datetime import date
 
 DB_DIR = os.path.join("data")
 DB_FILE = os.path.join(DB_DIR, "simple_budget.sqlite3")
@@ -24,6 +23,11 @@ class SimpleBudgetDB:
             
             cur.executescript(
                 """
+                CREATE TABLE IF NOT EXISTS settings (
+                    key TEXT PRIMARY KEY,
+                    value TEXT NOT NULL
+                );
+                
                 CREATE TABLE IF NOT EXISTS accounts (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     name TEXT NOT NULL,
@@ -45,37 +49,52 @@ class SimpleBudgetDB:
                     created_at TEXT NOT NULL DEFAULT CURRENT_DATE,
                     FOREIGN KEY(account_id) REFERENCES accounts(id) ON DELETE CASCADE
                 );
-                CREATE TABLE IF NOT EXISTS recurring_transactions (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name TEXT NOT NULL,
-                    kind TEXT NOT NULL,
-                    amount REAL NOT NULL,
-                    account_id INTEGER NOT NULL,
-                    tag TEXT NOT NULL DEFAULT 'Inne',
-                    note TEXT NOT NULL DEFAULT '',
-                    frequency TEXT NOT NULL DEFAULT 'Miesięcznie',
-                    next_date TEXT NOT NULL DEFAULT CURRENT_DATE,
-                    active INTEGER NOT NULL DEFAULT 1,
-                    FOREIGN KEY(account_id) REFERENCES accounts(id) ON DELETE CASCADE
-                );
                 """
             )
+            
+            cur.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('currency', 'zł');")
+            cur.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('font', 'Segoe UI');")
             
             cur.execute("SELECT COUNT(*) FROM tags")
             if cur.fetchone()[0] == 0:
                 cur.executemany(
                     "INSERT INTO tags (name, color) VALUES (?, ?)",
                     [
-                        ("Inne", "#6E5BE8"),
-                        ("Jedzenie", "#34D399"),
-                        ("Mieszkanie", "#F59E0B"),
-                        ("Rozrywka", "#EC4899"),
+                        ("Jedzenie", "#F97316"),
                         ("Transport", "#3B82F6"),
+                        ("Mieszkanie", "#8B5CF6"),
+                        ("Rozrywka", "#EC4899"),
+                        ("Przelew", "#8B5CF6"),
+                        ("Inne", "#64748B"),
                     ],
                 )
+            else:
+                cur.execute("INSERT OR IGNORE INTO tags (name, color) VALUES ('Przelew', '#8B5CF6')")
 
     def close(self):
         self.conn.close()
+
+    def get_currency(self):
+        cur = self.conn.cursor()
+        cur.execute("SELECT value FROM settings WHERE key = 'currency'")
+        row = cur.fetchone()
+        return row['value'] if row else "zł"
+
+    def set_currency(self, currency):
+        with self.conn:
+            cur = self.conn.cursor()
+            cur.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('currency', ?)", (currency,))
+
+    def get_font(self):
+        cur = self.conn.cursor()
+        cur.execute("SELECT value FROM settings WHERE key = 'font'")
+        row = cur.fetchone()
+        return row['value'] if row else "Segoe UI"
+
+    def set_font(self, font):
+        with self.conn:
+            cur = self.conn.cursor()
+            cur.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('font', ?)", (font,))
 
     def accounts(self):
         cur = self.conn.cursor()
@@ -126,42 +145,24 @@ class SimpleBudgetDB:
             
             return cur.lastrowid
 
-    def update_transaction(self, transaction_id, kind, amount, account_id, tag, note, tx_date):
+    def add_transfer(self, from_account_id, to_account_id, amount, note, tx_date=None):
+        if not tx_date:
+            tx_date = str(date.today())
+            
         with self.conn:
             cur = self.conn.cursor()
-            cur.execute("SELECT kind, amount, account_id FROM transactions WHERE id = ?", (int(transaction_id),))
-            old = cur.fetchone()
-            if old is None:
-                raise ValueError("Transakcja nie istnieje")
-
-            old_kind, old_amount, old_account_id = old[0], float(old[1]), int(old[2])
-            old_effect = old_amount if old_kind == "Wpłata" else -old_amount
-            new_effect = float(amount) if kind == "Wpłata" else -float(amount)
-
-            if old_account_id == int(account_id):
-                delta = new_effect - old_effect
-                cur.execute("UPDATE accounts SET balance = balance + ? WHERE id = ?", (delta, int(account_id)))
-            else:
-                cur.execute("UPDATE accounts SET balance = balance - ? WHERE id = ?", (-old_effect, old_account_id))
-                cur.execute("UPDATE accounts SET balance = balance + ? WHERE id = ?", (new_effect, int(account_id)))
-
+            
             cur.execute(
-                "UPDATE transactions SET kind = ?, amount = ?, account_id = ?, tag = ?, note = ?, created_at = ? WHERE id = ?",
-                (kind, float(amount), int(account_id), tag, note, tx_date, int(transaction_id)),
+                "INSERT INTO transactions(kind, amount, account_id, tag, note, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                ("Wypłata", float(amount), int(from_account_id), "Przelew", note, tx_date),
             )
-
-    def delete_transaction(self, transaction_id):
-        with self.conn:
-            cur = self.conn.cursor()
-            cur.execute("SELECT kind, amount, account_id FROM transactions WHERE id = ?", (int(transaction_id),))
-            old = cur.fetchone()
-            if old is None:
-                return
-
-            old_kind, old_amount, old_account_id = old[0], float(old[1]), int(old[2])
-            effect = old_amount if old_kind == "Wpłata" else -old_amount
-            cur.execute("UPDATE accounts SET balance = balance - ? WHERE id = ?", (effect, old_account_id))
-            cur.execute("DELETE FROM transactions WHERE id = ?", (int(transaction_id),))
+            cur.execute("UPDATE accounts SET balance = balance - ? WHERE id = ?", (float(amount), int(from_account_id)))
+            
+            cur.execute(
+                "INSERT INTO transactions(kind, amount, account_id, tag, note, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                ("Wpłata", float(amount), int(to_account_id), "Przelew", note, tx_date),
+            )
+            cur.execute("UPDATE accounts SET balance = balance + ? WHERE id = ?", (float(amount), int(to_account_id)))
 
     def transactions(self):
         cur = self.conn.cursor()
@@ -189,6 +190,7 @@ class SimpleBudgetDB:
                    SUM(CASE WHEN kind='Wypłata' THEN amount ELSE 0 END) AS spent,
                    SUM(CASE WHEN kind='Wpłata' THEN amount ELSE 0 END) AS income
             FROM transactions
+            WHERE tag != 'Przelew'
             GROUP BY tag
             ORDER BY spent DESC
             """
@@ -203,115 +205,9 @@ class SimpleBudgetDB:
                    SUM(CASE WHEN kind='Wypłata' THEN amount ELSE 0 END) AS spent,
                    SUM(CASE WHEN kind='Wpłata' THEN amount ELSE 0 END) AS income
             FROM transactions
-            WHERE account_id = ?
+            WHERE account_id = ? AND tag != 'Przelew'
             GROUP BY tag
             ORDER BY spent DESC
             """, (int(account_id),)
         )
         return [dict(r) for r in cur.fetchall()]
-
-    def _parse_date(self, date_str):
-        try:
-            return datetime.fromisoformat(date_str).date()
-        except ValueError:
-            return date.today()
-
-    def _next_due_date(self, current_date, frequency):
-        if isinstance(current_date, str):
-            current_date = self._parse_date(current_date)
-
-        frequency = frequency or "Miesięcznie"
-        if frequency == "Codziennie":
-            return current_date + timedelta(days=1)
-        if frequency == "Co tydzień":
-            return current_date + timedelta(days=7)
-        if frequency == "Co 2 tygodnie":
-            return current_date + timedelta(days=14)
-        if frequency == "Co 3 miesiące":
-            month_increment = 3
-        else:
-            month_increment = 1
-
-        month = current_date.month + month_increment
-        year = current_date.year + (month - 1) // 12
-        month = ((month - 1) % 12) + 1
-        day = min(current_date.day, calendar.monthrange(year, month)[1])
-        return date(year, month, day)
-
-    def add_recurring(self, name, kind, amount, account_id, tag, note, frequency, next_date=None):
-        if not next_date:
-            next_date = str(date.today())
-        with self.conn:
-            cur = self.conn.cursor()
-            cur.execute(
-                "INSERT INTO recurring_transactions(name, kind, amount, account_id, tag, note, frequency, next_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                (name, kind, float(amount), int(account_id), tag, note, frequency, next_date),
-            )
-            return cur.lastrowid
-
-    def update_recurring(self, recurring_id, name, kind, amount, account_id, tag, note, frequency, next_date, active=1):
-        with self.conn:
-            cur = self.conn.cursor()
-            cur.execute(
-                "UPDATE recurring_transactions SET name = ?, kind = ?, amount = ?, account_id = ?, tag = ?, note = ?, frequency = ?, next_date = ?, active = ? WHERE id = ?",
-                (name, kind, float(amount), int(account_id), tag, note, frequency, next_date, int(active), int(recurring_id)),
-            )
-
-    def delete_recurring(self, recurring_id):
-        with self.conn:
-            cur = self.conn.cursor()
-            cur.execute("DELETE FROM recurring_transactions WHERE id = ?", (int(recurring_id),))
-
-    def recurring_transactions(self):
-        cur = self.conn.cursor()
-        cur.execute(
-            """
-            SELECT r.*, a.name AS account_name
-            FROM recurring_transactions r
-            JOIN accounts a ON a.id = r.account_id
-            ORDER BY r.id DESC
-            """
-        )
-        return [dict(r) for r in cur.fetchall()]
-
-    def process_recurring(self):
-        today = date.today()
-        templates = self.recurring_transactions()
-        if not templates:
-            return
-
-        for template in templates:
-            if template.get('active') != 1:
-                continue
-
-            next_due = self._parse_date(template['next_date'])
-            updated_date = next_due
-            while updated_date <= today:
-                self.add_transaction(
-                    template['kind'],
-                    template['amount'],
-                    template['account_id'],
-                    template['tag'],
-                    f"Cykliczne: {template['name']}" if template['name'] else template['tag'],
-                    tx_date=str(updated_date),
-                )
-                updated_date = self._next_due_date(updated_date, template['frequency'])
-
-            if str(updated_date) != template['next_date']:
-                with self.conn:
-                    cur = self.conn.cursor()
-                    cur.execute(
-                        "UPDATE recurring_transactions SET next_date = ? WHERE id = ?",
-                        (str(updated_date), int(template['id'])),
-                    )
-
-
-    def factory_reset(self):
-        self.conn.close()
-        if os.path.exists(DB_FILE):
-            os.remove(DB_FILE)
-        
-        self.conn = sqlite3.connect(DB_FILE, check_same_thread=False)
-        self.conn.row_factory = sqlite3.Row
-
-        self._init_schema()
