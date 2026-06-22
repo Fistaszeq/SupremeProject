@@ -639,7 +639,7 @@ class SimpleBudgetApp(ctk.CTk):
             mode_row.pack(fill="x", padx=16, pady=(0, 12))
             ctk.CTkLabel(mode_row, text="Motyw interfejsu", text_color=self.curr_text_color, font=("Segoe UI", 15, "bold")).pack(side="left")
             
-            mode_switch = ctk.CTkSwitch(mode_row, text="", button_color=self.curr_text_color, variable=self.mode_var, command=change_appearance_mode, onvalue="on", offvalue="off", width=40)
+            mode_switch = ctk.CTkSwitch(mode_row, text="", button_color=self.curr_text_color, variable=self.mode_var, command=change_appearance_mode, onvalue="on", offvalue="off", state="disabled", width=40)
             mode_switch.pack(side="right")
 
             # PREFERENCJE
