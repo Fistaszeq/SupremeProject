@@ -1,28 +1,18 @@
 """
-Plik 2:
-Moduł głównej aplikacji GUI. Zoptymalizowany pod kątem responsywności i
-asynchronicznego ładowania widoków. Wzbogacony o wykres kołowy statystyk.
+Moduł głównej aplikacji GUI. Zoptymalizowany.
 """
 
 import tkinter as tk
 from tkinter import messagebox
 import customtkinter as ctk
-from datetime import datetime
-import csv
-from tkinter import messagebox, filedialog
 
 import matplotlib
 matplotlib.use("TkAgg")
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-import matplotlib.pyplot as plt
 
 from budget_db import SimpleBudgetDB
-from budget_dialogs import AccountDialog, AddTransactionDialog, AccountDetailsDialog, RecurringTransactionDialog
-
-from collections import defaultdict
-from datetime import datetime, timedelta
-import numpy as np
+from budget_dialogs import AccountDialog, AddTransactionDialog, AccountDetailsDialog, TransferDialog
 
 
 class SimpleBudgetApp(ctk.CTk):
@@ -31,79 +21,36 @@ class SimpleBudgetApp(ctk.CTk):
         self.title("Budget iOS")
         self.geometry("1200x900")
         self.minsize(380, 760)
-
-        self.default_color = "#FFE600"
-        self.category_colors = {
-            "Inne": "#6E5BE8", 
-            "Jedzenie": "#34D399", 
-            "Mieszkanie": "#F59E0B", 
-            "Rozrywka": "#EC4899", 
-            "Transport": "#3B82F6"
-        }
-
-        self.dark_mode_colors = {
-            "darkest_color": "#111217", 
-            "sc_darkest_color": "#1B1D29",
-            "middle_color":  "#252837", 
-            "lightest_color": "#374151"
-        }
-
-        self.light_mode_colors = {
-            "darkest_color": "#EEEEEE",
-            "sc_darkest_color": "#E3DCD3",
-            "middle_color":  "#D7C9B8",
-            "lightest_color": "#C5B09B"  
-        }
-
-        self.mode_var = ctk.StringVar(value="on")
-
-        self.curr_mode_colors = self.dark_mode_colors
-        self.curr_text_color = self.adjust_font_color(self.curr_mode_colors.get("darkest_color", "#111217"))
-
-        self.configure(fg_color=self.curr_mode_colors.get("darkest_color", "#111217"))
+        self.configure(fg_color=("#F3F4F6", "#111217"))
         self.db = SimpleBudgetDB()
-        self.db.process_recurring()
 
-        top = ctk.CTkFrame(self, fg_color=self.curr_mode_colors.get("sc_darkest_color", "#1B1D29"), corner_radius=10)
+        top = ctk.CTkFrame(self, fg_color=("#FFFFFF", "#1B1D29"), corner_radius=10)
         top.pack(fill="x", padx=8, pady=(14, 8))
-        ctk.CTkLabel(top, text="BudgetFlow", text_color=self.curr_text_color, font=("Segoe UI", 32, "bold")).pack(side="left", padx=20, pady=10)
+        ctk.CTkLabel(top, text="BudgetFlow", text_color=("#111827", "#F8FAFC"), font=("Segoe UI", 32, "bold")).pack(side="left", padx=20, pady=10)
 
         self.view_var = "Main"
-        self.history_account_var = tk.StringVar(value="Wszystkie")
-        self.history_tag_var = tk.StringVar(value="Wszystkie")
-        self.history_period_var = tk.StringVar(value="Ostatnie 30 dni")
 
-        ctk.CTkButton(top, text="Ustawienia", text_color=self.curr_text_color, fg_color=self.curr_mode_colors.get("sc_darkest_color", "#1B1D29"), hover_color=self.curr_mode_colors.get("darkest_color", "#111217"), font=("Segoe UI", 14, "bold"), command=lambda: self.switch_view("Ustawienia")).pack(side="right", padx=(4, 4))
-        ctk.CTkButton(top, text="Statystyki", text_color=self.curr_text_color, fg_color=self.curr_mode_colors.get("sc_darkest_color", "#1B1D29"),
-                      hover_color=self.curr_mode_colors.get("darkest_color", "#111217"), font=("Segoe UI", 14, "bold"), command=lambda:
-                      self.switch_view("Statystyki")).pack(side="right", padx=(4, 8))
-        ctk.CTkButton(top, text="Strona główna", text_color=self.curr_text_color, fg_color=self.curr_mode_colors.get("sc_darkest_color", "#1B1D29"),
-                      hover_color=self.curr_mode_colors.get("darkest_color", "#111217"), font=("Segoe UI", 14, "bold"), command=lambda:
-                      self.switch_view("Main")).pack(side="right", padx=(4, 4))
-        self.main_container = ctk.CTkFrame(self, fg_color=self.curr_mode_colors.get("sc_darkest_color", "#1B1D29"), corner_radius=10)
+        ctk.CTkButton(top, text="Ustawienia", fg_color="transparent", hover_color=("#E5E7EB", "#111217"), text_color=("#111827", "#F8FAFC"), font=("Segoe UI", 14, "bold"), command=lambda: self.switch_view("Ustawienia")).pack(side="right", padx=(4, 8))
+        ctk.CTkButton(top, text="Statystyki", fg_color="transparent", hover_color=("#E5E7EB", "#111217"), text_color=("#111827", "#F8FAFC"), font=("Segoe UI", 14, "bold"), command=lambda: self.switch_view("Statystyki")).pack(side="right", padx=(4, 4))
+        ctk.CTkButton(top, text="Strona główna", fg_color="transparent", hover_color=("#E5E7EB", "#111217"), text_color=("#111827", "#F8FAFC"), font=("Segoe UI", 14, "bold"), command=lambda: self.switch_view("Main")).pack(side="right", padx=(4, 4))
+
+        self.main_container = ctk.CTkFrame(self, fg_color=("#FFFFFF", "#1B1D29"), corner_radius=10)
         self.main_container.pack(fill="both", expand=True, padx=8, pady=(0, 8))
-
-        self.days_count = 14
-        
-        
 
         self.frames = {
             "Main": ctk.CTkFrame(self.main_container, fg_color="transparent"),
             "Statystyki": ctk.CTkFrame(self.main_container, fg_color="transparent"),
             "Ustawienia": ctk.CTkFrame(self.main_container, fg_color="transparent")
         }
-
+        
         self.loading_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
-        self.loading_spinner = ctk.CTkLabel(self.loading_frame, text="Ładowanie danych...", text_color=self.curr_text_color, font=("Segoe UI", 20, "bold"))
+        self.loading_spinner = ctk.CTkLabel(self.loading_frame, text="Ładowanie danych...", text_color=("#6B7280", "#8E8E93"), font=("Segoe UI", 20, "bold"))
         self.loading_spinner.place(relx=0.5, rely=0.5, anchor="center")
-        
-        self.fab = ctk.CTkButton(self, text="+", fg_color="#6E5BE8", hover_color="#4b39bf",
-                                 font=("Segoe UI", 24, "bold"), width=50, height=50, corner_radius=10,
-                                 command=self.open_add_menu)
+
+        self.fab = ctk.CTkButton(self, text="+", fg_color="#6E5BE8", text_color="#FFFFFF", font=("Segoe UI", 24, "bold"), width=50, height=50, corner_radius=10, command=self.open_add_menu)
         self.fab.place(relx=1.0, rely=1.0, x=-36, y=-18, anchor="se")
-        
         self.fab.lift()
-        
+
         self.trigger_render()
 
     def switch_view(self, view_name):
@@ -115,9 +62,9 @@ class SimpleBudgetApp(ctk.CTk):
     def trigger_render(self):
         for frame in self.frames.values():
             frame.pack_forget()
-
+        
         self.loading_frame.pack(fill="both", expand=True)
-        self.update_idletasks()
+        self.update_idletasks() 
         self.after(50, self._execute_render)
 
     def _execute_render(self):
@@ -125,87 +72,18 @@ class SimpleBudgetApp(ctk.CTk):
         self.loading_frame.pack_forget()
         self.frames[self.view_var].pack(fill="both", expand=True)
 
-    def _parse_iso_date(self, date_str):
-        try:
-            return datetime.fromisoformat(date_str).date()
-        except Exception:
-            return None
-
-    def _upcoming_recurring(self, limit=4):
-        items = []
-        today = datetime.today().date()
-        for template in self.db.recurring_transactions():
-            if template.get("active") != 1:
-                continue
-            due_date = self._parse_iso_date(template.get("next_date", ""))
-            if due_date is None:
-                continue
-            days = (due_date - today).days
-            items.append({
-                "name": template["name"],
-                "kind": template["kind"],
-                "amount": template["amount"],
-                "account_name": template["account_name"],
-                "tag": template["tag"],
-                "due_date": due_date,
-                "days": days,
-            })
-        items.sort(key=lambda x: x["due_date"])
-        return items[:limit]
-
-    def _filter_transactions(self, transactions):
-        filtered = []
-        today = datetime.now().date()
-        period = self.history_period_var.get()
-
-        for item in transactions:
-            if self.history_account_var.get() != "Wszystkie" and item['account_name'] != self.history_account_var.get():
-                continue
-            if self.history_tag_var.get() != "Wszystkie" and item['tag'] != self.history_tag_var.get():
-                continue
-
-            created_at = item['created_at'].split(" ")[0] if " " in item['created_at'] else item['created_at']
-            tx_date = self._parse_iso_date(created_at)
-            if tx_date is None:
-                continue
-
-            if period == "Ostatnie 7 dni" and (today - tx_date).days > 6:
-                continue
-            if period == "Ostatnie 30 dni" and (today - tx_date).days > 29:
-                continue
-            if period == "Ostatnie 90 dni" and (today - tx_date).days > 89:
-                continue
-
-            filtered.append(item)
-
-        return filtered
-    
-    def adjust_font_color(self, hex_color):
-        try:
-            hex_color = hex_color.lstrip("#")
-            r = int(hex_color[0:2], 16)
-            g = int(hex_color[2:4], 16)
-            b = int(hex_color[4:6], 16)
-
-            #wzor na luminancje
-            lum = 0.299*r + 0.587*g + 0.114*b
-
-            return "#252837" if lum > 140 else "#FFFFFF"
-        except Exception:
-            return self.curr_text_color
-
-
     def render(self):
         current_frame = self.frames[self.view_var]
-
+        
         for child in current_frame.winfo_children():
             child.destroy()
 
-        if self.view_var == "Main":
-            #Zakladka main
-            accounts = self.db.accounts()
-            total = sum(a['balance'] for a in accounts)
+        accounts = self.db.accounts()
+        total = sum(a['balance'] for a in accounts)
+        color_family = {"#2563EB": "#1E3A8A", "#8B5CF6": "#4C1D95", "#10B981": "#064E3B", "#F59E0B": "#78350F"}
+        currency = self.db.get_currency()
 
+        if self.view_var == "Main":
             current_frame.grid_columnconfigure(0, weight=1, uniform="group1")
             current_frame.grid_columnconfigure(1, weight=1, uniform="group1")
             current_frame.grid_rowconfigure(0, weight=1)
@@ -213,462 +91,202 @@ class SimpleBudgetApp(ctk.CTk):
             body_left = ctk.CTkScrollableFrame(current_frame, fg_color="transparent")
             body_left.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
 
-            ctk.CTkLabel(body_left, text="Łącznie na wszystkich kontach", text_color=self.curr_text_color, font=("Segoe UI", 12)).pack(anchor="w", padx=8, pady=(4, 0))
-            ctk.CTkLabel(body_left, text=f"{total:.2f} zł", text_color=self.curr_text_color, font=("Segoe UI", 32, "bold")).pack(anchor="w", padx=8, pady=(2, 12))
+            ctk.CTkLabel(body_left, text="Łącznie na wszystkich kontach", text_color=("#4B5563", "#94A3B8"), font=("Segoe UI", 13)).pack(anchor="w", padx=8, pady=(4, 0))
+            ctk.CTkLabel(body_left, text=f"{total:.2f} {currency}", text_color=("#111827", "#F8FAFC"), font=("Segoe UI", 32, "bold")).pack(anchor="w", padx=8, pady=(2, 12))
 
             if not accounts:
-                empty = ctk.CTkFrame(body_left, fg_color=self.curr_mode_colors.get("middle_color", "#252837"), corner_radius=10)
+                empty = ctk.CTkFrame(body_left, fg_color=("#F3F4F6", "#252837"), corner_radius=10)
                 empty.pack(fill="x", padx=8, pady=6)
-                ctk.CTkLabel(empty, text="Brak kont – dodaj pierwsze konto", text_color=self.curr_text_color, font=("Segoe UI", 14)).pack(pady=18)
+                ctk.CTkLabel(empty, text="Brak kont — dodaj pierwsze konto", text_color=("#4B5563", "#CBD5E1"), font=("Segoe UI", 14)).pack(pady=18)
             else:
-                for idx, account in enumerate(accounts):
-                    card_color = account.get("color", "#3B82F6")
-                    text_color = self.adjust_font_color(card_color)
-                    card = ctk.CTkFrame(body_left, fg_color=card_color, corner_radius=12)
+                for account in accounts:
+                    card = ctk.CTkFrame(body_left, fg_color=color_family.get(account['color'], account['color']), corner_radius=12)
                     card.pack(fill="x", padx=8, pady=6)
-
-                    ctk.CTkLabel(card, text=account['name'], fg_color="transparent", text_color=text_color, font=("Segoe UI", 16, "bold")).pack(anchor="w", padx=16, pady=(12, 0))
-                    ctk.CTkLabel(card, text=f"{account['balance']:.2f} zł", fg_color="transparent", text_color=text_color, font=("Segoe UI", 22, "bold")).pack(anchor="w", padx=16, pady=(0, 2))
-
-                    if account.get('last_date'):
+                    
+                    ctk.CTkLabel(card, text=account['name'], text_color="#FFFFFF", font=("Segoe UI", 16, "bold")).pack(anchor="w", padx=16, pady=(12, 0))
+                    ctk.CTkLabel(card, text=f"{account['balance']:.2f} {currency}", text_color="#FFFFFF", font=("Segoe UI", 22, "bold")).pack(anchor="w", padx=16, pady=(0, 2))
+                    
+                    if account['last_date']:
                         sign = "+" if account['last_kind'] == "Wpłata" else "-"
-                        last_info = f"Ostatnio: {account['last_date']} ({sign}{account['last_amount']:.2f} zł)"
+                        last_info = f"Ostatnio: {account['last_date']} ({sign}{account['last_amount']:.2f} {currency})"
                     else:
                         last_info = "Ostatnio: Brak transakcji"
-
-                    ctk.CTkLabel(card, text=last_info, text_color=text_color, font=("Segoe UI", 11)).pack(anchor="w", padx=16, pady=(0, 10))
-
-                    btn_frame = ctk.CTkFrame(card, fg_color="transparent")
-                    btn_frame.pack(fill="x", padx=16, pady=(0, 12))
+                        
+                    ctk.CTkLabel(card, text=last_info, text_color="#E5E7EB", font=("Segoe UI", 11)).pack(anchor="w", padx=16, pady=(0, 10))
                     
-                    ctk.CTkButton(btn_frame, text="Szczegóły", width=75, height=24, fg_color="#0A84FF", hover_color="#0066CC", text_color=self.curr_text_color, font=("Segoe UI", 11, "bold"), command=lambda a=account: self.show_account_details(a)).pack(side="left", padx=(0, 8))
-                    ctk.CTkButton(btn_frame, text="Edytuj", width=65, height=24, fg_color="#334155", hover_color="#475569", text_color=self.curr_text_color, font=("Segoe UI", 11, "bold"), command=lambda a=account: self.edit_account(a)).pack(side="left", padx=(0, 8))
-                    ctk.CTkButton(btn_frame, text="Usuń", width=65, height=24, fg_color="#EF4444", hover_color="#DC2626", text_color=self.curr_text_color, font=("Segoe UI", 11, "bold"), command=lambda a=account: self.delete_account(a)).pack(side="left")
+                    btn_frame = ctk.CTkFrame(card, fg_color="transparent")
+                    btn_frame.pack(anchor="w", padx=16, pady=(0, 12))
+                    ctk.CTkButton(btn_frame, text="Szczegóły", width=75, height=24, fg_color="#0A84FF", hover_color="#0066CC", text_color="#FFFFFF", font=("Segoe UI", 11, "bold"), command=lambda a=account: self.show_account_details(a)).pack(side="left", padx=(0, 8))
+                    ctk.CTkButton(btn_frame, text="Edytuj", width=65, height=24, fg_color="#334155", hover_color="#475569", text_color="#F8FAFC", font=("Segoe UI", 11, "bold"), command=lambda a=account: self.edit_account(a)).pack(side="left", padx=(0, 8))
+                    ctk.CTkButton(btn_frame, text="Usuń", width=65, height=24, fg_color="#EF4444", hover_color="#DC2626", text_color="#FFFFFF", font=("Segoe UI", 11, "bold"), command=lambda a=account: self.delete_account(a)).pack(side="left")
 
-            ctk.CTkButton(body_left, text="Dodaj konto", fg_color="#6E5BE8", hover_color="#4b39bf", font=("Segoe UI", 14, "bold"), corner_radius=10, command=self.add_account).pack(pady=10)
+            buttons_frame = ctk.CTkFrame(body_left, fg_color="transparent")
+            buttons_frame.pack(fill="x", pady=10)
+            ctk.CTkButton(buttons_frame, text="Dodaj konto", fg_color="#6E5BE8", text_color="#FFFFFF", font=("Segoe UI", 14, "bold"), corner_radius=10, command=self.add_account).pack(side="left", expand=True, padx=4)
+            ctk.CTkButton(buttons_frame, text="Przelew", fg_color="#8B5CF6", text_color="#FFFFFF", font=("Segoe UI", 14, "bold"), corner_radius=10, command=self.open_transfer_menu).pack(side="left", expand=True, padx=4)
 
             body_right = ctk.CTkScrollableFrame(current_frame, fg_color="transparent")
-            body_right.grid(row=0, column=1, sticky="nsew", padx=(6,  0))
+            body_right.grid(row=0, column=1, sticky="nsew", padx=(6, 0))
 
-            history = ctk.CTkFrame(body_right, fg_color=self.curr_mode_colors.get("darkest_color", "111217"), corner_radius=10)
-            history.pack(fill="both", padx=8, pady=(8,  8), expand=True)
-            ctk.CTkLabel(history, text="Historia wpisów", text_color=self.curr_text_color, font=("Segoe UI", 16, "bold")).pack(anchor="w", padx=14, pady=(10, 6))
-
-            tags = self.db.tags()
-            account_options = ["Wszystkie"] + [a['name'] for a in accounts]
-            tag_options = ["Wszystkie"] + [t['name'] for t in tags]
-            period_options = ["Ostatnie 7 dni", "Ostatnie 30 dni", "Ostatnie 90 dni", "Wszystkie"]
-
-            filter_row = ctk.CTkFrame(history, fg_color=self.curr_mode_colors.get("darkest_color", "111217"), corner_radius=10)
-            filter_row.pack(fill="x", padx=10, pady=(0, 10))
-            ctk.CTkLabel(filter_row, text="Filtr:", text_color=self.curr_text_color, font=("Segoe UI", 12, "bold")).pack(side="left", padx=(10, 8), pady=10)
-            ctk.CTkLabel(filter_row, text="Konto", text_color=self.curr_text_color, font=("Segoe UI", 11)).pack(side="left", padx=(0, 4))
-            ctk.CTkComboBox(filter_row, variable=self.history_account_var, values=account_options, fg_color=self.curr_mode_colors.get("sc_darkest_color", "1B1D29"), border_color=self.curr_mode_colors.get("darkest_color", "111217"), button_color=self.curr_mode_colors.get("lightest_color", "#374151"), text_color=self.curr_text_color, corner_radius=8, width=150, state="readonly", command=lambda x: self.trigger_render()).pack(side="left", padx=(0, 8), pady=10)
-            ctk.CTkLabel(filter_row, text="Tag", text_color=self.curr_text_color, font=("Segoe UI", 11)).pack(side="left", padx=(0, 4))
-            ctk.CTkComboBox(filter_row, variable=self.history_tag_var, values=tag_options, fg_color=self.curr_mode_colors.get("sc_darkest_color", "1B1D29"), border_color=self.curr_mode_colors.get("darkest_color", "111217"), button_color=self.curr_mode_colors.get("lightest_color", "#374151"), text_color=self.curr_text_color, corner_radius=8, width=150, state="readonly", command=lambda x: self.trigger_render()).pack(side="left", padx=(0, 8), pady=10)
-            ctk.CTkComboBox(filter_row, variable=self.history_period_var, values=period_options, fg_color=self.curr_mode_colors.get("sc_darkest_color", "1B1D29"), border_color=self.curr_mode_colors.get("darkest_color", "111217"), button_color=self.curr_mode_colors.get("lightest_color", "#374151"), text_color=self.curr_text_color, corner_radius=8, width=160, state="readonly", command=lambda x: self.trigger_render()).pack(side="right", padx=(0, 10), pady=10)
-
-            all_transactions = self.db.transactions()
-            filtered_transactions = self._filter_transactions(all_transactions)
-            ctk.CTkLabel(history, text=f"Pokaż {len(filtered_transactions)} z {len(all_transactions)} wpisów", text_color=self.curr_text_color, font=("Segoe UI", 12)).pack(anchor="w", padx=14, pady=(0, 8))
-
-            if not filtered_transactions:
-                empty_history = ctk.CTkFrame(history, fg_color=self.curr_mode_colors.get("middle_color", "#252837"), corner_radius=10)
-                empty_history.pack(fill="both", padx=10, pady=(0, 10))
-                ctk.CTkLabel(empty_history, text="Brak wpisów pasujących do wybranego filtra.", text_color=self.curr_text_color, font=("Segoe UI", 13)).pack(pady=18)
-            else:
-                for item in filtered_transactions:
-                    row = ctk.CTkFrame(history, fg_color=self.curr_mode_colors.get("middle_color", "#252837"), corner_radius=10)
-                    row.pack(fill="x", padx=10, pady=6)
-
-                    top_row = ctk.CTkFrame(row, fg_color="transparent")
-                    top_row.pack(fill="x", padx=14, pady=(12, 2))
-
-                    title_text = item['note'] if item['note'] else item['tag']
-                    ctk.CTkLabel(top_row, text=title_text, text_color=self.curr_text_color, font=("Segoe UI", 15, "bold")).pack(side="left")
-
-                    sign = "+" if item['kind'] == "Wpłata" else "-"
-                    status_color = "#34C759" if item['kind'] == "Wpłata" else "#FF3B30"
-                    ctk.CTkLabel(top_row, text=f"{sign}{item['amount']:.2f} zł", text_color=status_color, font=("Segoe UI", 15, "bold")).pack(side="right")
-
-                    bottom_row = ctk.CTkFrame(row, fg_color="transparent")
-                    bottom_row.pack(fill="x", padx=14, pady=(0, 12))
-
-                    recurring_label = " • Cykliczne" if item['note'].startswith("Cykliczne:") else ""
-                    meta_text = f"{item['created_at']} • {item['account_name']} • {item['tag']}{recurring_label}"
-                    ctk.CTkLabel(bottom_row, text=meta_text, text_color=self.curr_text_color, font=("Segoe UI", 12)).pack(side="left", pady=(2, 0))
-                    ctk.CTkButton(bottom_row, text="Usuń", width=60, height=24, fg_color="#EF4444", hover_color="#DC2626", text_color=self.curr_text_color, font=("Segoe UI", 11, "bold"), command=lambda t=item: self.delete_transaction(t)).pack(side="right", padx=(0, 8))
-                    ctk.CTkButton(bottom_row, text="Edytuj", width=60, height=24, fg_color="#0A84FF", hover_color="#0066CC", text_color=self.curr_text_color, font=("Segoe UI", 11, "bold"), command=lambda t=item: self.edit_transaction(t)).pack(side="right", padx=(0, 8))
-
-            upcoming_items = self._upcoming_recurring(limit=5)
-            due_panel = ctk.CTkFrame(body_right, fg_color=self.curr_mode_colors.get("darkest_color", "111217"), corner_radius=14)
-            due_panel.pack(fill="x", padx=8, pady=(0, 8))
-            ctk.CTkLabel(due_panel, text="Nadchodzące płatności", text_color=self.curr_text_color, font=("Segoe UI", 16, "bold")).pack(anchor="w", padx=14, pady=(10, 6))
-            if upcoming_items:
-                for item in upcoming_items:
-                    status_color = "#F59E0B" if item["days"] <= 3 and item["days"] >= 0 else "#10B981"
-                    if item["days"] < 0:
-                        due_label = f"Przeterminowane {abs(item['days'])} dni temu"
-                        status_color = "#EF4444"
-                    elif item["days"] == 0:
-                        due_label = "Dzisiaj"
-                        status_color = "#38BDF8"
-                    else:
-                        due_label = f"Za {item['days']} dni"
-
-                    card = ctk.CTkFrame(due_panel, fg_color="#111827", corner_radius=10)
-                    card.pack(fill="x", padx=10, pady=6)
-                    header = ctk.CTkFrame(card, fg_color="transparent")
-                    header.pack(fill="x", padx=14, pady=(10, 0))
-                    ctk.CTkLabel(header, text=item["name"], text_color=self.curr_text_color, font=("Segoe UI", 14, "bold")).pack(side="left")
-                    ctk.CTkLabel(header, text=f"{item['kind']} {item['amount']:.2f} zł", text_color=status_color, font=("Segoe UI", 13, "bold")).pack(side="right")
-                    detail = f"{item['account_name']} • {item['tag']} • {due_label}"
-                    ctk.CTkLabel(card, text=detail, text_color=self.curr_text_color, font=("Segoe UI", 12), wraplength=360, justify="left").pack(fill="x", padx=14, pady=(6, 10))
-            else:
-                ctk.CTkLabel(due_panel, text="Brak nadchodzących aktywnych płatności.", text_color=self.curr_text_color, font=("Segoe UI", 13), wraplength=360, justify="left").pack(fill="x", padx=14, pady=(8, 14))
-
-            assistant_insights = self._assistant_advice()
-            assistant = ctk.CTkFrame(body_right, fg_color=self.curr_mode_colors.get("darkest_color", "111217"), corner_radius=14)
-            assistant.pack(fill="x", padx=8, pady=(0, 8))
-            ctk.CTkLabel(assistant, text="Asystent AI", text_color=self.curr_text_color, font=("Segoe UI", 16, "bold")).pack(anchor="w", padx=14, pady=(10, 6))
-            for insight in assistant_insights:
-                ctk.CTkLabel(assistant, text=f"• {insight}", text_color=self.curr_text_color, font=("Segoe UI", 12), wraplength=360, justify="left").pack(anchor="w", padx=20, pady=(0, 6))
-            ctk.CTkButton(assistant, text="Przeprowadź szybką analizę", fg_color="#6E5BE8", hover_color="#4b39bf", text_color=self.curr_text_color, font=("Segoe UI", 12, "bold"), corner_radius=10, command=self.trigger_render).pack(fill="x", padx=14, pady=(6, 14))
-
-            recurring = ctk.CTkFrame(body_right, fg_color=self.curr_mode_colors.get("darkest_color", "111217"), corner_radius=10)
-            recurring.pack(fill="x", padx=8, pady=(0, 8))
-            ctk.CTkLabel(recurring, text="Cykliczne transakcje", text_color=self.curr_text_color, font=("Segoe UI", 16, "bold")).pack(anchor="w", padx=14, pady=(10, 6))
-
-            recurring_templates = self.db.recurring_transactions()
-            if recurring_templates:
-                for template in recurring_templates:
-                    card = ctk.CTkFrame(recurring, fg_color=self.curr_mode_colors.get("middle_color", "#252837"), corner_radius=10)
-                    card.pack(fill="x", padx=10, pady=6)
-
-                    header = ctk.CTkFrame(card, fg_color="transparent")
-                    header.pack(fill="x", padx=14, pady=(12, 2))
-                    ctk.CTkLabel(header, text=template['name'], text_color=self.curr_text_color, font=("Segoe UI", 14, "bold")).pack(side="left")
-                    ctk.CTkLabel(header, text=f"{template['frequency']}", text_color=self.curr_text_color, font=("Segoe UI", 12)).pack(side="right")
-
-                    details = ctk.CTkLabel(card, text=f"{template['kind']} {template['amount']:.2f} zł • {template['account_name']} • Następna: {template['next_date']}", text_color=self.curr_text_color, font=("Segoe UI", 12), wraplength=320, justify="left")
-                    details.pack(fill="x", padx=14, pady=(0, 4))
-
-                    btn_frame = ctk.CTkFrame(card, fg_color="transparent")
-                    btn_frame.pack(fill="x", padx=14, pady=(0, 12))
-                    ctk.CTkButton(btn_frame, text="Edytuj", width=80, height=24, fg_color="#334155", hover_color="#475569", text_color=self.curr_text_color, font=("Segoe UI", 11, "bold"), command=lambda t=template: self.edit_recurring(t)).pack(side="left", padx=(0, 8))
-                    ctk.CTkButton(btn_frame, text="Usuń", width=80, height=24, fg_color="#EF4444", hover_color="#DC2626", text_color=self.curr_text_color, font=("Segoe UI", 11, "bold"), command=lambda t=template: self.delete_recurring(t)).pack(side="left")
-            else:
-                empty_recurring = ctk.CTkFrame(recurring, fg_color=self.curr_mode_colors.get("middle_color", "#252837"), corner_radius=10)
-                empty_recurring.pack(fill="both", padx=10, pady=6)
-                ctk.CTkLabel(empty_recurring, text="Brak zaplanowanych cyklicznych transakcji.", text_color=self.curr_text_color, font=("Segoe UI", 13)).pack(padx=14, pady=18)
-
-            ctk.CTkButton(recurring, text="Dodaj cykliczną transakcję", fg_color="#6E5BE8", hover_color="#4b39bf", font=("Segoe UI", 14, "bold"), corner_radius=10, command=self.open_recurring_menu).pack(fill="x", padx=14, pady=(0, 14))
-
-            suggestion_text = self._generate_savings_suggestion()
-            suggestions = ctk.CTkFrame(body_right, fg_color=self.curr_mode_colors.get("darkest_color", "111217"), corner_radius=10)
-            suggestions.pack(fill="x", padx=8, pady=(0, 8))
-            ctk.CTkLabel(suggestions, text="Sugestie Asystenta", text_color=self.curr_text_color, font=("Segoe UI", 16, "bold")).pack(anchor="w", padx=14, pady=(10, 6))
-            ctk.CTkLabel(suggestions, text=suggestion_text, text_color=self.curr_text_color, font=("Segoe UI", 13), wraplength=360, justify="left").pack(fill="x", padx=14, pady=(0, 14))
+            history = ctk.CTkFrame(body_right, fg_color=("#F3F4F6", "#111217"), corner_radius=10)
+            history.pack(fill="both", padx=8, pady=(8, 8), expand=True)
+            ctk.CTkLabel(history, text="Historia wpisów", text_color=("#111827", "#F8FAFC"), font=("Segoe UI", 16, "bold")).pack(anchor="w", padx=14, pady=(10, 6))
+            
+            for item in self.db.transactions():
+                row = ctk.CTkFrame(history, fg_color=("#FFFFFF", "#252837"), corner_radius=10)
+                row.pack(fill="x", padx=10, pady=6)
+                
+                top_row = ctk.CTkFrame(row, fg_color="transparent")
+                top_row.pack(fill="x", padx=14, pady=(12, 2))
+                
+                title_text = item['note'] if item['note'] else item['tag']
+                ctk.CTkLabel(top_row, text=title_text, text_color=("#111827", "#F8FAFC"), font=("Segoe UI", 15, "bold")).pack(side="left")
+                
+                sign = "+" if item['kind'] == "Wpłata" else "-"
+                status_color = "#34C759" if item['kind'] == "Wpłata" else "#FF3B30"
+                # Specjalny kolor dla przelewów
+                if item['tag'] == "Przelew":
+                    status_color = "#8B5CF6"
+                    
+                ctk.CTkLabel(top_row, text=f"{sign} {item['amount']:.2f} {currency}", text_color=status_color, font=("Segoe UI", 15, "bold")).pack(side="right")
+                
+                bottom_row = ctk.CTkFrame(row, fg_color="transparent")
+                bottom_row.pack(fill="x", padx=14, pady=(0, 12))
+                
+                meta_text = f"{item['created_at']} • {item['account_name']} • {item['tag']}"
+                ctk.CTkLabel(bottom_row, text=meta_text, text_color=("#6B7280", "#94A3B8"), font=("Segoe UI", 12)).pack(side="left", pady=(2, 0))
+                
+                if item['tag'] != "Przelew":
+                    ctk.CTkButton(bottom_row, text="Ponów", width=60, height=24, fg_color=("#E5E7EB", "#3A3A3C"), hover_color=("#D1D5DB", "#48484A"), text_color=("#111827", "#FFFFFF"), font=("Segoe UI", 11, "bold"), corner_radius=6, command=lambda t=item: self.repeat_transaction(t)).pack(side="right")
 
         elif self.view_var == "Statystyki":
-            #Zakladka statystyki
             stat_scroll = ctk.CTkScrollableFrame(current_frame, fg_color="transparent")
             stat_scroll.pack(fill="both", expand=True)
 
-            ctk.CTkLabel(stat_scroll, text="Statystyki Globalne", text_color=self.curr_text_color, font=("Segoe UI", 24, "bold")).pack(anchor="w", padx=20, pady=(20,  10))
-
-            accounts = self.db.accounts()
-            stats = self.db.stats()
-            total_balance = sum(a['balance'] for a in accounts)
-            total_spent = sum(item['spent'] for item in stats)
-            total_income = sum(item['income'] for item in stats)
-            active_recurring = sum(1 for t in self.db.recurring_transactions() if t.get('active') == 1)
-            top_spent_tag = next((item['tag'] for item in sorted(stats, key=lambda x: x['spent'], reverse=True) if item['spent'] > 0), 'Brak')
-
-            summary_panel = ctk.CTkFrame(stat_scroll, fg_color=self.curr_mode_colors.get("middle_color", "#252837"), corner_radius=16)
-            summary_panel.pack(fill="x", padx=20, pady=(0, 16))
-            summary_panel.grid_columnconfigure((0, 1, 2, 3), weight=1)
-
-            summary_cards = [
-                ("Saldo wszystkich kont", f"{total_balance:.2f} zł", "#34D399"),
-                ("Łączne wydatki", f"{total_spent:.2f} zł", "#F97316"),
-                ("Łączne przychody", f"{total_income:.2f} zł", "#60A5FA"),
-                ("Aktywne cykliczne", str(active_recurring), "#A78BFA"),
-            ]
-
-            for idx, (title, value, color) in enumerate(summary_cards):
-                card = ctk.CTkFrame(summary_panel, fg_color=self.curr_mode_colors.get("middle_color", "#252837"), corner_radius=14)
-                card.grid(row=0, column=idx, sticky="nsew", padx=(10 if idx > 0 else 14, 14 if idx < 3 else 14), pady=14)
-                ctk.CTkLabel(card, text=title, text_color=self.curr_text_color, font=("Segoe UI", 11, "bold")).pack(anchor="w", padx=14, pady=(14, 6))
-                ctk.CTkLabel(card, text=value, text_color=color, font=("Segoe UI", 20, "bold")).pack(anchor="w", padx=14, pady=(0, 12))
-
-            if top_spent_tag != 'Brak':
-                tmp_color = self.category_colors.get(top_spent_tag) #Kolor tekstu w kolorze danej kategorii
-                trend_card = ctk.CTkFrame(stat_scroll, fg_color=self.curr_mode_colors.get("middle_color", "#252837"), corner_radius=16)
-                trend_card.pack(fill="x", padx=20, pady=(0, 12))
-                ctk.CTkLabel(trend_card, text="Największa kategoria wydatków", text_color=self.curr_text_color, font=("Segoe UI", 14, "bold")).pack(anchor="w", padx=14, pady=(14, 6))
-                ctk.CTkLabel(trend_card, text=f"{top_spent_tag}", text_color=tmp_color, font=("Segoe UI", 18, "bold")).pack(anchor="w", padx=14, pady=(0, 14))
-
-            stat_frame = ctk.CTkFrame(stat_scroll, fg_color="transparent")
-            stat_frame.pack(fill="both", expand=True)
-            stat_frame.grid_columnconfigure(0, weight=1, uniform="group2")
-            stat_frame.grid_columnconfigure(1, weight=1, uniform="group2")
-            stat_frame.grid_rowconfigure(0, weight=0)
-            stat_frame.grid_rowconfigure(1, weight=1)
-
-            stat_left = ctk.CTkScrollableFrame(stat_frame, fg_color="transparent", label_text="")
-            stat_left.grid(row=0, column=0, rowspan=2, sticky="nsew", padx=(0, 6))
-
-            ctk.CTkLabel(stat_left, text="Statystyki i wydatki według tagów", text_color=self.curr_text_color, font=("Segoe UI", 14, "bold")).pack(anchor="w", padx=8, pady=(4, 8))
-
-            pie_chart_container = ctk.CTkFrame(stat_frame, fg_color="transparent")
-            pie_chart_container.grid(row=0, column=1, sticky="nsew", padx=(6, 0))
+            ctk.CTkLabel(stat_scroll, text="Statystyki Globalne", text_color=("#111827", "#F8FAFC"), font=("Segoe UI", 24, "bold")).pack(anchor="w", padx=20, pady=(20, 10))
             
+            stats = self.db.stats()
             if stats:
-                # Filtrowanie etykiet i wartości tylko dla wydatków większych od zera
-                labels = [item["tag"] for item in stats if item["spent"] > 0]
-                sizes = [item["spent"] for item in stats if item["spent"] > 0]
+                tags = [s['tag'] for s in stats]
+                spent = [s['spent'] for s in stats]
 
-                #Ramka na wykres kołowy
-                pie_chart_frame = ctk.CTkFrame(pie_chart_container, fg_color=self.curr_mode_colors.get("middle_color", "#252837"), corner_radius=10)
-                pie_chart_frame.pack(fill="x", padx=8, pady=6)
+                current_mode = ctk.get_appearance_mode()
+                bg_color = '#FFFFFF' if current_mode == 'Light' else '#1B1D29'
+                text_color = '#000000' if current_mode == 'Light' else 'white'
 
-                bar_chart_container = ctk.CTkFrame(stat_frame, fg_color="transparent")
-                bar_chart_container.grid(row=1, column=1, sticky="nsew", padx=(6, 0), pady=(10, 0))
-
-                if sizes:
-                    #Tworzenie wykresu kołowego
-                    pie_colors = [self.category_colors.get(label, self.default_color) for label in labels]
-
-                    fig, ax = plt.subplots(figsize=(4, 4), facecolor=self.curr_mode_colors.get("middle_color", "#252837"))
-                    ax.set_facecolor(self.curr_mode_colors.get("middle_color", "#252837"))
-
-                    wedges, texts, autotexts = ax.pie(
-                        sizes, labels=labels, 
-                        autopct = '%1.0f%%', startangle=90,
-                        colors = pie_colors,
-                        textprops = dict(color=self.curr_text_color), 
-                        wedgeprops = {"width": 0.4, "edgecolor": self.curr_mode_colors.get("middle_color", "#252837")}
-                    )
-
-                    #Kolor tekstu na wykresie
-                    for autotext in autotexts:
-                        autotext.set_color(self.curr_text_color)
-                        autotext.set_weight('bold')
-
-                    ax.axis("equal")
-                    ax.set_title("Statystyki całkowitych wydatków", color=self.curr_text_color, fontname="Segoe UI", fontsize=14, fontweight="bold", pad=8)
-
-                    #Rysowanie wykresu kołowego
-                    canvas_pie_chart = FigureCanvasTkAgg(fig, master=pie_chart_frame)
-                    canvas_pie_chart.draw()
-                    canvas_pie_chart.get_tk_widget().pack(fill="both", expand=True, padx=8, pady=8)
-                    plt.close(fig)
-                else:
-                    ctk.CTkLabel(pie_chart_frame, text="Brak danych o wydatkach", text_color=self.curr_text_color, font=("Segoe UI", 14)).pack(expand=True, pady=20)
-
-                #Wykres slupkowy
-
-                                    #data: (kategoria: suma_wydatkow)
-                raw_daily_expenses = defaultdict(lambda: defaultdict(float))
-                categories = set()
-                for tx in self.db.transactions():
-                    if tx["kind"] != "Wpłata":
-                        date_str = tx["created_at"].split(" ") if " " in tx["created_at"] else tx["created_at"]
-                        category = tx.get("tag", "Inne")
-
-                        raw_daily_expenses[date_str][category] += float(tx["amount"])
-                        categories.add(category)
-
-
-                sorted_categories = sorted(list(categories))
-
-                #Generwoanie ostatniego tygodnia
-                sorted_dates = []
-                
-                if not hasattr(self, "days_count"):
-                    self.days_count = 14
-
-                category_date = {ctg: [] for ctg in sorted_categories}
-                
-                today = datetime.now()
-                for i in range((self.days_count - 1), -1, -1):
-                    day = today - timedelta(days=i)
-                    date_str = day.strftime("%Y-%m-%d")
-                    sorted_dates.append(date_str)
-                    daily_expenses = raw_daily_expenses.get(date_str, {})
-                    for ctg in sorted_categories:
-                        category_date[ctg].append(daily_expenses.get(ctg, 0.0))
-
-                #Rysowanie wykresu
-                bar_chart_frame = ctk.CTkFrame(bar_chart_container, fg_color=self.curr_mode_colors.get("middle_color", "#252837"), corner_radius=10)
-                bar_chart_frame.pack(fill="both", expand=True, padx=8, pady=6)
-
-                #Menu rozwijane
-                def on_days_count_change(option):
-                    self.days_count = int(option)
-                    ax_bar.set_title(f"Całkowite wydatki z ostatnich {option} dni", color="self.curr_text_color", fontsize=12, fontweight="bold", pad=10) #inaczej nie dziala
-                    self.trigger_render()
-
-                days_count_menu_frame = ctk.CTkFrame(bar_chart_frame, fg_color="transparent")
-                days_count_menu_frame.pack(fill="x", padx=(10,4), pady=(4,0))
-                days_count_menu = ctk.CTkOptionMenu(
-                    days_count_menu_frame,
-                    width = 50,
-                    values = ["7", "14", "21", "28"],
-                    command = on_days_count_change,
-                    fg_color="#4b39bf",
-                    button_color="#6E5BE8",
-                    button_hover_color="#6E5BE8"
-                )
-                days_count_menu.pack(side="right")
-                days_count_menu.set(str(self.days_count))
-
-                fig_bar = Figure(figsize=(5, 3), facecolor='#252837')
-                ax_bar = fig_bar.add_subplot(111)
-                ax_bar.set_facecolor(self.curr_mode_colors.get("middle_color", "#252837"))
-
-                bottom_values = np.zeros(self.days_count)
-
-                for idx, ctg in enumerate(sorted_categories):
-                    current_values = np.array(category_date[ctg])
-                    color = self.category_colors.get(ctg, self.default_color)
-
-                    ax_bar.bar(sorted_dates, current_values, bottom=bottom_values, label=ctg, color=color, width=0.5)
-                    bottom_values += current_values
-
-                ax_bar.legend(facecolor=self.curr_mode_colors.get("middle_color", "#252837"), edgecolor="none", labelcolor=self.curr_text_color, fontsize=8, loc="upper left")
-
-                ax_bar.set_title(f"Całkowite wydatki z ostatnich {self.days_count} dni", color=self.curr_text_color, fontsize=12, fontweight="bold", pad=10)
-                ax_bar.tick_params(colors=self.curr_text_color, labelsize=10, axis='x', rotation=45)
-                ax_bar.tick_params(colors=self.curr_text_color, labelsize=10, axis='y')
-
-                for spine in ax_bar.spines.values(): 
+                fig = Figure(figsize=(10, 4), facecolor=bg_color)
+                ax = fig.add_subplot(111)
+                ax.set_facecolor(bg_color)
+                bars = ax.barh(tags, spent, color='#FF3B30', height=0.6)
+                ax.set_title("Wydatki według kategorii", color=text_color, fontsize=12)
+                ax.tick_params(colors=text_color, labelsize=10)
+                for spine in ax.spines.values(): 
                     spine.set_visible(False)
-                fig_bar.tight_layout()
-                fig_bar.patch.set_facecolor(self.curr_mode_colors.get("middle_color", "#252837"))
+                fig.tight_layout()
 
-                canvas_bar = FigureCanvasTkAgg(fig_bar, master=bar_chart_frame)
-                canvas_bar.get_tk_widget().pack(fill="both", expand=True, padx=8, pady=8)
-                canvas_bar.draw()
+                canvas = FigureCanvasTkAgg(fig, master=stat_scroll)
+                canvas.get_tk_widget().pack(fill="x", padx=20, pady=10)
+                canvas.draw()
 
-                # --------------------------------------------------------------------------------------
+            for item in stats:
+                card = ctk.CTkFrame(stat_scroll, fg_color=("#F3F4F6", "#252837"), corner_radius=10)
+                card.pack(fill="x", padx=20, pady=6)
+                ctk.CTkLabel(card, text=item['tag'], text_color=("#111827", "#F8FAFC"), font=("Segoe UI", 14, "bold")).pack(side="left", padx=15, pady=15)
+                ctk.CTkLabel(card, text=f"Wydano: {item['spent']:.2f} {currency}   •   Wpłaty: {item['income']:.2f} {currency}", text_color=("#4B5563", "#CBD5E1"), font=("Segoe UI", 12)).pack(side="right", padx=15)
 
-                cashflow_frame = ctk.CTkFrame(bar_chart_container, fg_color=self.curr_mode_colors.get("middle_color", "#252837"), corner_radius=10)
-                cashflow_frame.pack(fill="both", expand=True, padx=8, pady=6)
+            if not stats:
+                ctk.CTkLabel(stat_scroll, text="Brak danych — dodaj pierwszy wpis", text_color=("#4B5563", "#CBD5E1"), font=("Segoe UI", 13)).pack(pady=20)
 
-                monthly_spending = defaultdict(float)
-                monthly_income = defaultdict(float)
-                for tx in self.db.transactions():
-                    date_str = tx['created_at'].split(" ")[0] if " " in tx['created_at'] else tx['created_at']
-                    tx_date = self._parse_iso_date(date_str)
-                    if tx_date is None:
-                        continue
-                    month_key = tx_date.strftime("%Y-%m")
-                    if tx['kind'] == "Wpłata":
-                        monthly_income[month_key] += float(tx['amount'])
-                    else:
-                        monthly_spending[month_key] += float(tx['amount'])
-
-                months = []
-                month_labels = []
-                for i in range(5, -1, -1):
-                    month = datetime.now().replace(day=1) - timedelta(days=i * 30)
-                    month_key = month.strftime("%Y-%m")
-                    months.append(month_key)
-                    month_labels.append(month.strftime("%b"))
-
-                income_values = [monthly_income.get(m, 0.0) for m in months]
-                spend_values = [monthly_spending.get(m, 0.0) for m in months]
-
-                fig_cash = Figure(figsize=(5, 2.5), facecolor='#252837')
-                ax_cash = fig_cash.add_subplot(111)
-                ax_cash.set_facecolor(self.curr_mode_colors.get("middle_color", "#252837"))
-                x = list(range(len(months)))
-                width = 0.35
-                ax_cash.bar([xi - width / 2 for xi in x], spend_values, width, color="#F97316", label="Wydatki")
-                ax_cash.bar([xi + width / 2 for xi in x], income_values, width, color="#34D399", label="Przychody")
-                ax_cash.set_title("Miesięczny cashflow", color=self.curr_text_color, fontsize=12, fontweight="bold", pad=10)
-                ax_cash.set_xticks(x)
-                ax_cash.set_xticklabels(month_labels, color=self.curr_text_color, fontsize=10)
-                ax_cash.tick_params(colors=self.curr_text_color, axis='y', labelsize=10)
-                ax_cash.spines['top'].set_visible(False)
-                ax_cash.spines['right'].set_visible(False)
-                ax_cash.spines['left'].set_color(self.curr_text_color)
-                ax_cash.spines['bottom'].set_color(self.curr_text_color)
-                ax_cash.legend(facecolor=self.curr_mode_colors.get("middle_color", "#252837"), edgecolor=self.curr_mode_colors.get("middle_color", "#252837"), labelcolor=self.curr_text_color)
-                fig_cash.tight_layout()
-                fig_cash.patch.set_facecolor(self.curr_mode_colors.get("middle_color", "#252837"))
-
-                canvas_cash = FigureCanvasTkAgg(fig_cash, master=cashflow_frame)
-                canvas_cash.get_tk_widget().pack(fill="both", expand=True, padx=8, pady=8)
-                canvas_cash.draw()
-
-                for item in stats:
-                    card = ctk.CTkFrame(stat_left, fg_color=self.curr_mode_colors.get("middle_color", "#252837"), corner_radius=10)
-                    card.pack(fill="x", padx=8, pady=6)
-
-                    ctk.CTkLabel(card, text=item['tag'], text_color=self.curr_text_color, font=("Segoe UI", 14, "bold")).pack(side="left", padx=15, pady=15)
-                    
-                    info_text = f"Wydano: {item['spent']:.2f} zł  •  Wpłaty: {item['income']:.2f} zł"
-                    ctk.CTkLabel(card, text=info_text, text_color=self.curr_text_color, font=("Segoe UI", 12)).pack(side="right", padx=15)
-            else:
-                ctk.CTkLabel(stat_left, text="Brak danych – dodaj pierwszy wpis", text_color=self.curr_text_color, font=("Segoe UI", 13)).pack(pady=20)
-        
         elif self.view_var == "Ustawienia":
             settings_scroll = ctk.CTkScrollableFrame(current_frame, fg_color="transparent")
             settings_scroll.pack(fill="both", expand=True)
 
-            ctk.CTkLabel(settings_scroll, text="Ustawienia Aplikacji", text_color=self.curr_text_color, font=("Segoe UI", 24, "bold")).pack(anchor="w", padx=20, pady=(20, 10))
+            ctk.CTkLabel(settings_scroll, text="Ustawienia Systemowe", text_color=("#111827", "#F8FAFC"), font=("Segoe UI", 24, "bold")).pack(anchor="w", padx=20, pady=(20, 10))
 
-            # wygląd karty
-            appearance_card = ctk.CTkFrame(settings_scroll, fg_color=self.curr_mode_colors.get("middle_color", "#252837"), corner_radius=12)
-            appearance_card.pack(fill="x", padx=20, pady=10)
-            ctk.CTkLabel(appearance_card, text="WYGLĄD", text_color=self.curr_text_color, font=("Segoe UI", 11, "bold")).pack(anchor="w", padx=16, pady=(12, 5))
+            theme_frame = ctk.CTkFrame(settings_scroll, fg_color=("#F3F4F6", "#252837"), corner_radius=10)
+            theme_frame.pack(fill="x", padx=20, pady=10)
+            
+            ctk.CTkLabel(theme_frame, text="Opcje regionalne i wygląd", text_color=("#111827", "#F8FAFC"), font=("Segoe UI", 16, "bold")).pack(anchor="w", padx=15, pady=(15, 5))
+            
+            def change_appearance_mode(new_mode):
+                ctk.set_appearance_mode(new_mode)
+                self.trigger_render()
+                
+            ctk.CTkLabel(theme_frame, text="Motyw aplikacji:", text_color=("#6B7280", "#94A3B8"), font=("Segoe UI", 12)).pack(anchor="w", padx=15, pady=(0, 2))
+            theme_combo = ctk.CTkComboBox(
+                theme_frame, 
+                values=["Dark", "Light"], 
+                command=change_appearance_mode,
+                fg_color=("#FFFFFF", "#1B1D29"), 
+                border_color=("#D1D5DB", "#334155"), 
+                button_color=("#D1D5DB", "#334155"), 
+                text_color=("#111827", "#FFFFFF")
+            )
+            theme_combo.pack(anchor="w", padx=15, pady=(0, 10))
+            theme_combo.set(ctk.get_appearance_mode())
 
-            def change_appearance_mode():
-                mode = self.mode_var.get()
-                if mode == "on":
-                    self.curr_mode_colors = self.dark_mode_colors
-                elif mode == "off":
-                    self.curr_mode_colors = self.light_mode_colors
-                self.curr_text_color = self.adjust_font_color(self.curr_mode_colors.get("darkest_color", "#111217"))
+            def change_currency(new_currency):
+                self.db.set_currency(new_currency)
                 self.trigger_render()
 
-            mode_row = ctk.CTkFrame(appearance_card, fg_color="transparent")
-            mode_row.pack(fill="x", padx=16, pady=(0, 12))
-            ctk.CTkLabel(mode_row, text="Motyw interfejsu", text_color=self.curr_text_color, font=("Segoe UI", 15, "bold")).pack(side="left")
+            ctk.CTkLabel(theme_frame, text="Domyślna waluta:", text_color=("#6B7280", "#94A3B8"), font=("Segoe UI", 12)).pack(anchor="w", padx=15, pady=(5, 2))
+            currency_combo = ctk.CTkComboBox(
+                theme_frame,
+                values=["zł", "USD", "EUR", "GBP", "CHF"],
+                command=change_currency,
+                fg_color=("#FFFFFF", "#1B1D29"), 
+                border_color=("#D1D5DB", "#334155"), 
+                button_color=("#D1D5DB", "#334155"), 
+                text_color=("#111827", "#FFFFFF")
+            )
+            currency_combo.pack(anchor="w", padx=15, pady=(0, 15))
+            currency_combo.set(currency)
+
+            db_frame = ctk.CTkFrame(settings_scroll, fg_color=("#F3F4F6", "#252837"), corner_radius=10)
+            db_frame.pack(fill="x", padx=20, pady=10)
             
-            mode_switch = ctk.CTkSwitch(mode_row, text="", button_color=self.curr_text_color, variable=self.mode_var, command=change_appearance_mode, onvalue="on", offvalue="off", width=40)
-            mode_switch.pack(side="right")
+            ctk.CTkLabel(db_frame, text="Baza danych", text_color=("#111827", "#F8FAFC"), font=("Segoe UI", 16, "bold")).pack(anchor="w", padx=15, pady=(15, 5))
+            
+            import os
+            db_path = os.path.abspath(os.path.join("data", "simple_budget.sqlite3"))
+            
+            ctk.CTkLabel(db_frame, text="Ścieżka zapisu (do kopii zapasowej):", text_color=("#6B7280", "#94A3B8"), font=("Segoe UI", 12)).pack(anchor="w", padx=15, pady=(0, 2))
+            
+            path_entry = ctk.CTkEntry(db_frame, fg_color=("#FFFFFF", "#1B1D29"), border_color=("#D1D5DB", "#334155"), text_color=("#111827", "#F8FAFC"), width=400)
+            path_entry.pack(anchor="w", padx=15, pady=(0, 15))
+            path_entry.insert(0, db_path)
+            path_entry.configure(state="readonly")
 
-            # PREFERENCJE
-            prefs_card = ctk.CTkFrame(settings_scroll, fg_color=self.curr_mode_colors.get("middle_color", "#252837"), corner_radius=12)
-            prefs_card.pack(fill="x", padx=20, pady=10)
-            ctk.CTkLabel(prefs_card, text="PREFERENCJE", text_color=self.curr_text_color, font=("Segoe UI", 11, "bold")).pack(anchor="w", padx=16, pady=(12, 5))
+            reset_frame = ctk.CTkFrame(settings_scroll, fg_color=("#F3F4F6", "#252837"), corner_radius=10)
+            reset_frame.pack(fill="x", padx=20, pady=10)
+            
+            ctk.CTkLabel(reset_frame, text="Resetowanie danych", text_color=("#111827", "#F8FAFC"), font=("Segoe UI", 16, "bold")).pack(anchor="w", padx=15, pady=(15, 5))
+            ctk.CTkLabel(reset_frame, text="Permanentne usunięcie wszystkich zarejestrowanych kont oraz pełnej historii wpisów.", text_color=("#6B7280", "#94A3B8"), font=("Segoe UI", 12)).pack(anchor="w", padx=15, pady=(0, 10))
+            
+            ctk.CTkButton(
+                reset_frame, 
+                text="Zresetuj wszystkie dane", 
+                fg_color="#EF4444", 
+                hover_color="#DC2626", 
+                text_color="#FFFFFF",
+                font=("Segoe UI", 12, "bold"),
+                command=self.reset_application_data
+            ).pack(anchor="w", padx=15, pady=(0, 15))
 
-            # Włączenie powiadomień
-            notif_row = ctk.CTkFrame(prefs_card, fg_color="transparent")
-            notif_row.pack(fill="x", padx=16, pady=(0, 16))
-            ctk.CTkLabel(notif_row, text="Powiadomienia o przekroczeniu budżetu", text_color=self.curr_text_color, font=("Segoe UI", 15, "bold")).pack(side="left")
-            ctk.CTkSwitch(notif_row, text="", progress_color="#34C759", button_color=self.curr_text_color, width=40).pack(side="right")
-
-            # ZARZĄDZANIE DANYMI
-            data_card = ctk.CTkFrame(settings_scroll, fg_color=self.curr_mode_colors.get("middle_color", "#252837"), corner_radius=12)
-            data_card.pack(fill="x", padx=20, pady=10)
-            ctk.CTkLabel(data_card, text="ZARZĄDZANIE DANYMI", text_color=self.curr_text_color, font=("Segoe UI", 11, "bold")).pack(anchor="w", padx=16, pady=(12, 5))
-
-            # Export do CSV 
-            export_row = ctk.CTkFrame(data_card, fg_color="transparent")
-            export_row.pack(fill="x", padx=16, pady=(0, 10))
-            ctk.CTkLabel(export_row, text="Eksportuj historię transakcji do CSV", text_color=self.curr_text_color, font=("Segoe UI", 15, "bold")).pack(side="left")
-            ctk.CTkButton(export_row, text="Eksportuj", fg_color="#0A84FF", hover_color="#0066CC", font=("Segoe UI", 12, "bold"), width=90, command=self.export_to_csv).pack(side="right")
-
-            # Reset aplikacji
-            danger_row = ctk.CTkFrame(data_card, fg_color="transparent")
-            danger_row.pack(fill="x", padx=16, pady=(0, 16))
-            ctk.CTkLabel(danger_row, text="Zresetuj aplikację (Usuń wszystkie dane)", text_color="#FF3B30", font=("Segoe UI", 15, "bold")).pack(side="left")
-            ctk.CTkButton(danger_row, text="Resetuj", fg_color="#FF3B30", hover_color="#D73229", font=("Segoe UI", 12, "bold"), width=90, command=self.reset_application).pack(side="right")
+    def reset_application_data(self):
+        if messagebox.askyesno("Potwierdzenie resetu", "Czy na pewno chcesz zresetować wszystkie dane?\n\nTa operacja całkowicie usunie wszystkie konta oraz historię wpisów. Nie można tego cofnąć!"):
+            try:
+                with self.db.conn:
+                    cur = self.db.conn.cursor()
+                    cur.execute("PRAGMA foreign_keys = OFF;")
+                    cur.execute("DELETE FROM transactions;")
+                    cur.execute("DELETE FROM accounts;")
+                    cur.execute("DELETE FROM sqlite_sequence WHERE name IN ('transactions', 'accounts');")
+                    cur.execute("PRAGMA foreign_keys = ON;")
+                self.trigger_render()
+                messagebox.showinfo("Sukces", "Wszystkie dane zostały pomyślnie usunięte.")
+            except Exception as e:
+                messagebox.showerror("Błąd", f"Nie udało się zresetować danych: {str(e)}")
 
     def add_account(self):
         AccountDialog(self, on_saved=self._save_account)
@@ -677,92 +295,12 @@ class SimpleBudgetApp(ctk.CTk):
         AccountDialog(self, on_saved=self._save_account, account=account)
 
     def show_account_details(self, account):
-        AccountDetailsDialog(self, account, self.db)
+        AccountDetailsDialog(self, account, self.db, self.db.get_currency())
 
     def delete_account(self, account):
-        if messagebox.askyesno("Potwierdzenie", f"Czy na pewno chcesz usunąć konto '{account['name']}'?\nUsunięte zostaną też przypisane wpisy!"):
+        if messagebox.askyesno("Potwierdzenie", f"Czy na pewno chcesz usunąć konto '{account['name']}'?\n\nUsunięte zostaną też przypisane wpisy!"):
             self.db.delete_account(account['id'])
             self.trigger_render()
-
-    def reset_application(self):
-        """
-        Twardy reset aplikacji do ustawień fabrycznych.
-        1) Pyta użytkownika czy jest pewny swojej decyji. 
-        2) Jeśli tak, to usuwa i tworzy nowy database.
-        3) Re-renderuje okno na nowo.
-        4) Wypisuje komunikat o pomyślnym zakończeniu operacji.
-        """
-
-        # Okienko z zapytaniem (confirm będzie True albo False)
-        confirm = messagebox.askyesno(
-            "Krytyczne Ostrzeżenie", 
-            "Czy na pewno chcesz zresetować aplikację?\n\nTa operacja bezpowrotnie usunie WSZYSTKIE Twoje konta i całą historię transakcji. Nie można tego cofnąć!"
-        )
-        
-        if confirm:
-            self.db.factory_reset()
-            
-            # Ponowny render
-            self.trigger_render()
-            
-            # Informacja dla użytkownika
-            messagebox.showinfo("Reset", "Aplikacja została przywrócona do stanu fabrycznego.")
-
-    def export_to_csv(self):
-        """
-        Eksportuje historię transakcji do pliku CSV.
-        1) Pobiera transakcje z bazy danych.
-        2) Waliduje, czy transakcje istnieją.
-        3) Wywołuje okienko z pytaniem o miejsce zapisu oraz nazwę pliku.
-        4) Po zatwierdzeniu próbuje zapisać utworzyć i zapisać plik.
-        """
-        # Pobieranie danych
-        transactions = self.db.transactions()
-        
-        if not transactions:
-            messagebox.showinfo("Brak danych", "Nie ma żadnych transakcji do wyeksportowania.")
-            return
-
-        # Wywołanie okna dialogowego zapisu pliku
-        filepath = filedialog.asksaveasfilename(
-            defaultextension=".csv",
-            filetypes=[("Pliki CSV", "*.csv"), ("Wszystkie pliki", "*.*")],
-            title="Zapisz historię transakcji",
-            initialfile="BudgetFlow_Historia.csv"
-        )
-
-        # Jeśli użytkownik anulował 
-        if not filepath:
-            return
-
-        # Zapisywanie do pliku
-        try:
-            # Używamy 'utf-8-sig', dzięki temu excel rozpozna polskie znaki
-            with open(filepath, mode='w', newline='', encoding='utf-8-sig') as file:
-                
-                # Definiujemy, które pola ze słownika chcemy wyciągnąć i w jakiej kolejności
-                fieldnames = ['created_at', 'kind', 'amount', 'account_name', 'tag', 'note']
-                writer = csv.DictWriter(file, fieldnames=fieldnames, delimiter=';')
-                
-                writer.writerow({
-                    'created_at': 'Data',
-                    'kind': 'Rodzaj',
-                    'amount': 'Kwota',
-                    'account_name': 'Konto',
-                    'tag': 'Kategoria',
-                    'note': 'Notatka'
-                })
-                
-                # Zapisujemy właściwe dane z bazy
-                for tx in transactions:
-                    # Filtrujemy dane, na wypadek gdyby współpracownik dodał do bazy inne, niepotrzebne w CSV pola
-                    filtered_tx = {k: tx.get(k, '') for k in fieldnames}
-                    writer.writerow(filtered_tx)
-                    
-            messagebox.showinfo("Sukces", f"Pomyślnie wyeksportowano historię do pliku:\n{filepath}")
-            
-        except Exception as e: 
-            messagebox.showerror("Błąd", f"Wystąpił błąd podczas zapisu pliku:\n{str(e)}")
 
     def _save_account(self, account_id, name, balance, color):
         if account_id is None:
@@ -779,161 +317,27 @@ class SimpleBudgetApp(ctk.CTk):
             return
         AddTransactionDialog(self, accounts, tags, on_saved=self._save_transaction)
 
+    def open_transfer_menu(self):
+        accounts = self.db.accounts()
+        if len(accounts) < 2:
+            messagebox.showwarning("Uwaga", "Do wykonania przelewu wymagane są co najmniej dwa konta.")
+            return
+        TransferDialog(self, accounts, on_saved=self._save_transfer)
+
     def repeat_transaction(self, transaction):
         accounts = self.db.accounts()
         tags = self.db.tags()
-        AddTransactionDialog(self, accounts, tags, on_saved=self._save_transaction, transaction=transaction, edit_mode=False)
+        AddTransactionDialog(self, accounts, tags, on_saved=self._save_transaction, transaction=transaction)
 
-    def edit_transaction(self, transaction):
-        accounts = self.db.accounts()
-        tags = self.db.tags()
-        AddTransactionDialog(self, accounts, tags, on_saved=self._save_transaction, transaction=transaction, edit_mode=True)
-
-    def delete_transaction(self, transaction):
-        if messagebox.askyesno("Potwierdzenie", f"Czy na pewno chcesz usunąć wpis '{transaction['note'] or transaction['tag']}'?"):
-            self.db.delete_transaction(transaction['id'])
-            self.trigger_render()
-
-    def open_recurring_menu(self, recurring=None):
-        accounts = self.db.accounts()
-        tags = self.db.tags()
-        if not accounts:
-            messagebox.showwarning("Uwaga", "Musisz najpierw utworzyć konto.")
-            return
-        RecurringTransactionDialog(self, accounts, tags, on_saved=self._save_recurring, recurring=recurring)
-
-    def edit_recurring(self, recurring):
-        self.open_recurring_menu(recurring)
-
-    def delete_recurring(self, recurring):
-        if messagebox.askyesno("Potwierdzenie", f"Czy na pewno chcesz usunąć cykliczną transakcję '{recurring['name']}'?"):
-            self.db.delete_recurring(recurring['id'])
-            self.trigger_render()
-
-    def _save_recurring(self, recurring_id, name, kind, amount, account_id, tag, note, frequency, next_date, active):
-        if recurring_id is None:
-            self.db.add_recurring(name, kind, amount, account_id, tag, note, frequency, next_date)
-        else:
-            self.db.update_recurring(recurring_id, name, kind, amount, account_id, tag, note, frequency, next_date, active)
-        self.db.process_recurring()
+    def _save_transaction(self, kind, amount, account_id, tag, note, tx_date):
+        self.db.add_transaction(kind, amount, account_id, tag, note, tx_date)
         self.trigger_render()
 
-    def _generate_savings_suggestion(self):
-        stats = self.db.stats()
-        recurring = [r for r in self.db.recurring_transactions() if r.get('active') == 1]
-        if not stats and not recurring:
-            return "Jeszcze nic nie masz. Dodaj pierwsze konto i transakcję, a Asystent przygotuje dla Ciebie konkretne wskazówki."
-
-        total_spent = sum(item["spent"] for item in stats)
-        total_income = sum(item["income"] for item in stats)
-        active_recurring = len(recurring)
-        next_recurring = None
-        for template in recurring:
-            date_obj = self._parse_iso_date(template.get('next_date', ''))
-            if date_obj:
-                if next_recurring is None or date_obj < next_recurring[0]:
-                    next_recurring = (date_obj, template)
-
-        if total_spent == 0:
-            message = "Świetnie, nie masz jeszcze wydatków. "
-            if active_recurring:
-                message += f"Masz {active_recurring} aktywnych cyklicznych płatności — patrz, czy harmonia między nimi a przychodami jest ok."
-            else:
-                message += "Dodaj cykliczne transakcje, by automatycznie planować regularne wpływy i wydatki."
-            return message
-
-        top = max(stats, key=lambda item: item["spent"])
-        ratio = (top["spent"] / total_spent) * 100 if total_spent else 0
-        if total_spent > total_income:
-            trend = "Wydajesz więcej niż zarabiasz."
-        else:
-            trend = "Wydatki są w normie względem przychodów."
-
-        message = f"Największym kosztem jest {top['tag']} ({top['spent']:.2f} zł), co stanowi {ratio:.0f}% wszystkich wydatków. "
-        if ratio >= 40:
-            message += "To silny sygnał: spróbuj ograniczyć tę kategorię lub znaleźć tańszą alternatywę. "
-        elif ratio >= 25:
-            message += "W tej kategorii jest sporo wydatków — rozważ jej monitoring. "
-        else:
-            message += "Masz dobrą rozkładówkę wydatków — utrzymaj kontrolę. "
-
-        if total_spent > total_income:
-            deficit = total_spent - total_income
-            message += f"Masz deficyt w wysokości {deficit:.2f} zł. Przejrzyj subskrypcje i jedzenie poza domem. "
-        else:
-            message += "Masz dodatni cashflow, ale obserwuj regularne płatności, by utrzymać tę przewagę. "
-
-        if active_recurring:
-            message += f"Masz {active_recurring} aktywnych cyklicznych transakcji. "
-            if next_recurring:
-                days = (next_recurring[0] - datetime.today().date()).days
-                when = "dzisiaj" if days == 0 else f"za {days} dni" if days > 0 else f"{abs(days)} dni temu"
-                message += f"Następna z nich ({next_recurring[1]['name']}) jest zaplanowana {when}."
-        else:
-            message += "Dodaj cykliczne transakcje, aby lepiej planować przyszłe wydatki i wpływy."
-
-        return message
-
-    def _assistant_advice(self):
-        stats = self.db.stats()
-        recurring = [r for r in self.db.recurring_transactions() if r.get('active') == 1]
-        accounts = self.db.accounts()
-
-        if not stats and not recurring:
-            return [
-                "Dodaj pierwsze transakcje i przychody, aby Asystent mógł przygotować analizę.",
-                "Zacznij od konta, a następnie dodaj swój pierwszy wydatek lub wpływ.",
-            ]
-
-        total_spent = sum(item["spent"] for item in stats)
-        total_income = sum(item["income"] for item in stats)
-        balance = sum(a['balance'] for a in accounts)
-        suggestions = []
-
-        if total_income == 0:
-            suggestions.append("Brak przychodów. Dodaj wpis typu 'Wpłata', aby zobaczyć bilans budżetu.")
-        elif total_spent > total_income:
-            suggestions.append(f"Wydajesz więcej niż otrzymujesz: deficyt {total_spent - total_income:.2f} zł.")
-        else:
-            suggestions.append("Masz dodatni cashflow. Kontynuuj monitorowanie najdroższych kategorii.")
-
-        if stats:
-            top = max(stats, key=lambda item: item["spent"])
-            suggestions.append(f"Największym kosztem jest {top['tag']} ({top['spent']:.2f} zł). Sprawdź, czy możesz to zoptymalizować.")
-            if top['spent'] / total_spent >= 0.4:
-                suggestions.append(f"{top['tag']} zajmuje aż {top['spent'] / total_spent * 100:.0f}% wydatków — rozważ ograniczenia.")
-
-        if recurring:
-            next_date = None
-            next_item = None
-            for template in recurring:
-                date_obj = self._parse_iso_date(template.get('next_date', ''))
-                if date_obj is not None and (next_date is None or date_obj < next_date):
-                    next_date = date_obj
-                    next_item = template
-            if next_item and next_date:
-                days = (next_date - datetime.today().date()).days
-                when = "dzisiaj" if days == 0 else f"za {days} dni" if days > 0 else f"{abs(days)} dni temu"
-                suggestions.append(f"Następna cykliczna płatność: {next_item['name']} ({when}).")
-            suggestions.append(f"Masz {len(recurring)} aktywnych cyklicznych transakcji. Monitoruj je, aby uniknąć niespodzianek.")
-        else:
-            suggestions.append("Dodaj cykliczną transakcję, aby lepiej planować powtarzające się wydatki lub wpływy.")
-
-        if balance < 0:
-            suggestions.append("Saldo jest ujemne. Rozważ redukcję wydatków lub zwiększenie przychodów.")
-        else:
-            suggestions.append(f"Twoje saldo to {balance:.2f} zł. Utrzymuj rezerwę na nieprzewidziane wydatki.")
-
-        return suggestions
-
-    def _save_transaction(self, transaction_id, kind, amount, account_id, tag, note, tx_date):
-        if transaction_id is None:
-            self.db.add_transaction(kind, amount, account_id, tag, note, tx_date)
-        else:
-            self.db.update_transaction(transaction_id, kind, amount, account_id, tag, note, tx_date)
+    def _save_transfer(self, from_account_id, to_account_id, amount, note, tx_date):
+        self.db.add_transfer(from_account_id, to_account_id, amount, note, tx_date)
         self.trigger_render()
 
-#Uruchamianie aplikacji
+
 if __name__ == "__main__":
     ctk.set_appearance_mode("dark")
     app = SimpleBudgetApp()
@@ -941,4 +345,3 @@ if __name__ == "__main__":
         app.mainloop()
     finally:
         app.db.close()
-
