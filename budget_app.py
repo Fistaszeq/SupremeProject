@@ -28,7 +28,7 @@ import numpy as np
 class SimpleBudgetApp(ctk.CTk):
     def __init__(self):
         super().__init__()
-        self.title("Budget iOS")
+        self.title("BudgetFlow")
         self.geometry("1200x900")
         self.minsize(380, 760)
 
