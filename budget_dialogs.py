@@ -19,6 +19,9 @@ class AccountDialog(ctk.CTkToplevel):
         self.is_edit = account is not None
         self.account_id = account['id'] if self.is_edit else None
         
+        # Pobieranie czcionki dziedziczonej ze środowiska aplikacji 
+        self.app_font = parent.db.get_font() if hasattr(parent, 'db') else "Segoe UI"
+        
         self.title("Edytuj konto" if self.is_edit else "Dodaj konto")
         self.geometry("360x420")
         self.configure(fg_color="#1C1C1E")
@@ -28,17 +31,17 @@ class AccountDialog(ctk.CTkToplevel):
         self.resizable(False, False)
 
         title_text = "Edycja konta" if self.is_edit else "Nowe konto"
-        ctk.CTkLabel(self, text=title_text, text_color="#FFFFFF", font=("SF Pro Display", 20, "bold")).pack(pady=(20, 15))
+        ctk.CTkLabel(self, text=title_text, text_color="#FFFFFF", font=(self.app_font, 20, "bold")).pack(pady=(20, 15))
         
-        ctk.CTkLabel(self, text="NAZWA KONTA", text_color="#8E8E93", font=("SF Pro Display", 11, "bold"), anchor="w").pack(fill="x", padx=24)
-        self.name_entry = ctk.CTkEntry(self, fg_color="#2C2C2E", border_color="#3A3A3C", text_color="#FFFFFF", corner_radius=10, placeholder_text="np. Gotówka")
+        ctk.CTkLabel(self, text="NAZWA KONTA", text_color="#8E8E93", font=(self.app_font, 11, "bold"), anchor="w").pack(fill="x", padx=24)
+        self.name_entry = ctk.CTkEntry(self, fg_color="#2C2C2E", border_color="#3A3A3C", text_color="#FFFFFF", corner_radius=10, placeholder_text="np. Gotówka", font=(self.app_font, 12))
         self.name_entry.pack(fill="x", padx=24, pady=(4, 12))
 
-        ctk.CTkLabel(self, text="KWOTA (SALDO)", text_color="#8E8E93", font=("SF Pro Display", 11, "bold"), anchor="w").pack(fill="x", padx=24)
-        self.balance_entry = ctk.CTkEntry(self, fg_color="#2C2C2E", border_color="#3A3A3C", text_color="#FFFFFF", corner_radius=10, placeholder_text="0.00")
+        ctk.CTkLabel(self, text="KWOTA (SALDO)", text_color="#8E8E93", font=(self.app_font, 11, "bold"), anchor="w").pack(fill="x", padx=24)
+        self.balance_entry = ctk.CTkEntry(self, fg_color="#2C2C2E", border_color="#3A3A3C", text_color="#FFFFFF", corner_radius=10, placeholder_text="0.00", font=(self.app_font, 12))
         self.balance_entry.pack(fill="x", padx=24, pady=(4, 12))
 
-        ctk.CTkLabel(self, text="KOLOR IDENTYFIKACYJNY", text_color="#8E8E93", font=("SF Pro Display", 11, "bold"), anchor="w").pack(fill="x", padx=24)
+        ctk.CTkLabel(self, text="KOLOR IDENTYFIKACYJNY", text_color="#8E8E93", font=(self.app_font, 11, "bold"), anchor="w").pack(fill="x", padx=24)
         
         self.color_map = {
             "Niebieski": "#2563EB",
@@ -62,7 +65,8 @@ class AccountDialog(ctk.CTkToplevel):
             text_color="#FFFFFF", 
             corner_radius=10, 
             state="readonly",
-            command=self._on_color_select
+            command=self._on_color_select,
+            font=(self.app_font, 12)
         )
         self.color_combo.pack(fill="x", padx=24, pady=(4, 16))
 
@@ -84,7 +88,7 @@ class AccountDialog(ctk.CTkToplevel):
             self.display_color_var.set("Niebieski")
 
         btn_text = "Zapisz zmiany" if self.is_edit else "Zapisz konto"
-        self.save_btn = ctk.CTkButton(self, text=btn_text, fg_color="#0A84FF", hover_color="#0066CC", text_color="#FFFFFF", font=("SF Pro Display", 14, "bold"), corner_radius=10, height=40, command=lambda: self._save(on_saved))
+        self.save_btn = ctk.CTkButton(self, text=btn_text, fg_color="#0A84FF", hover_color="#0066CC", text_color="#FFFFFF", font=(self.app_font, 14, "bold"), corner_radius=10, height=40, command=lambda: self._save(on_saved))
         self.save_btn.pack(fill="x", padx=24, pady=20)
 
         self.bind('<Return>', lambda event: self._save(on_saved))
@@ -122,6 +126,7 @@ class AddTransactionDialog(ctk.CTkToplevel):
         super().__init__(parent)
         self.accounts = accounts
         self.current_kind = "Wypłata"
+        self.app_font = parent.db.get_font() if hasattr(parent, 'db') else "Segoe UI"
         
         self.title("Nowy wpis")
         self.geometry("380x580")
@@ -131,45 +136,44 @@ class AddTransactionDialog(ctk.CTkToplevel):
         self.focus_force()
         self.resizable(False, False)
 
-        ctk.CTkLabel(self, text="Dodaj wpis", text_color="#FFFFFF", font=("SF Pro Display", 20, "bold")).pack(pady=(20, 15))
+        ctk.CTkLabel(self, text="Dodaj wpis", text_color="#FFFFFF", font=(self.app_font, 20, "bold")).pack(pady=(20, 15))
 
-        ctk.CTkLabel(self, text="RODZAJ TRANSAKCJI", text_color="#8E8E93", font=("SF Pro Display", 11, "bold"), anchor="w").pack(fill="x", padx=24)
+        ctk.CTkLabel(self, text="RODZAJ TRANSAKCJI", text_color="#8E8E93", font=(self.app_font, 11, "bold"), anchor="w").pack(fill="x", padx=24)
         
         self.type_frame = ctk.CTkFrame(self, fg_color="#2C2C2E", corner_radius=8)
         self.type_frame.pack(fill="x", padx=24, pady=(4, 14))
         self.type_frame.grid_columnconfigure((0, 1), weight=1)
 
-        self.btn_wyplata = ctk.CTkButton(self.type_frame, text="Wypłata", fg_color="#FF3B30", hover_color="#D73229", text_color="#FFFFFF", font=("SF Pro Display", 12, "bold"), corner_radius=6, command=lambda: self.set_type("Wypłata"))
+        self.btn_wyplata = ctk.CTkButton(self.type_frame, text="Wypłata", fg_color="#FF3B30", hover_color="#D73229", text_color="#FFFFFF", font=(self.app_font, 12, "bold"), corner_radius=6, command=lambda: self.set_type("Wypłata"))
         self.btn_wyplata.grid(row=0, column=0, padx=2, pady=2, sticky="ew")
 
-        self.btn_wplata = ctk.CTkButton(self.type_frame, text="Wpłata", fg_color="transparent", hover_color="#3A3A3C", text_color="#8E8E93", font=("SF Pro Display", 12, "bold"), corner_radius=6, command=lambda: self.set_type("Wpłata"))
+        self.btn_wplata = ctk.CTkButton(self.type_frame, text="Wpłata", fg_color="transparent", hover_color="#3A3A3C", text_color="#8E8E93", font=(self.app_font, 12, "bold"), corner_radius=6, command=lambda: self.set_type("Wpłata"))
         self.btn_wplata.grid(row=0, column=1, padx=2, pady=2, sticky="ew")
 
-        ctk.CTkLabel(self, text="KWOTA", text_color="#8E8E93", font=("SF Pro Display", 11, "bold"), anchor="w").pack(fill="x", padx=24)
-        self.amount_entry = ctk.CTkEntry(self, fg_color="#2C2C2E", border_color="#FF3B30", text_color="#FFFFFF", corner_radius=10, placeholder_text="0.00", font=("SF Pro Display", 16))
+        ctk.CTkLabel(self, text="KWOTA", text_color="#8E8E93", font=(self.app_font, 11, "bold"), anchor="w").pack(fill="x", padx=24)
+        self.amount_entry = ctk.CTkEntry(self, fg_color="#2C2C2E", border_color="#FF3B30", text_color="#FFFFFF", corner_radius=10, placeholder_text="0.00", font=(self.app_font, 16))
         self.amount_entry.pack(fill="x", padx=24, pady=(4, 14))
 
-        ctk.CTkLabel(self, text="KONTO BAZOWE", text_color="#8E8E93", font=("SF Pro Display", 11, "bold"), anchor="w").pack(fill="x", padx=24)
+        ctk.CTkLabel(self, text="KONTO BAZOWE", text_color="#8E8E93", font=(self.app_font, 11, "bold"), anchor="w").pack(fill="x", padx=24)
         self.account_var = ctk.StringVar(value=accounts[0]['name'] if accounts else "")
-        self.account_combo = ctk.CTkComboBox(self, variable=self.account_var, values=[a['name'] for a in accounts] if accounts else ["Brak kont"], fg_color="#2C2C2E", border_color="#3A3A3C", button_color="#3A3A3C", text_color="#FFFFFF", corner_radius=10, state="readonly")
+        self.account_combo = ctk.CTkComboBox(self, variable=self.account_var, values=[a['name'] for a in accounts] if accounts else ["Brak kont"], fg_color="#2C2C2E", border_color="#3A3A3C", button_color="#3A3A3C", text_color="#FFFFFF", corner_radius=10, state="readonly", font=(self.app_font, 12))
         self.account_combo.pack(fill="x", padx=24, pady=(4, 14))
 
-        ctk.CTkLabel(self, text="KATEGORIA", text_color="#8E8E93", font=("SF Pro Display", 11, "bold"), anchor="w").pack(fill="x", padx=24)
-        # Filtrujemy tag "Przelew", by nie był widoczny w zwykłych transakcjach
+        ctk.CTkLabel(self, text="KATEGORIA", text_color="#8E8E93", font=(self.app_font, 11, "bold"), anchor="w").pack(fill="x", padx=24)
         filtered_tags = [t['name'] for t in tags if t['name'] != "Przelew"]
         self.tag_var = ctk.StringVar(value=filtered_tags[0] if filtered_tags else "Inne")
-        self.tag_combo = ctk.CTkComboBox(self, variable=self.tag_var, values=filtered_tags, fg_color="#2C2C2E", border_color="#3A3A3C", button_color="#3A3A3C", text_color="#FFFFFF", corner_radius=10, state="readonly")
+        self.tag_combo = ctk.CTkComboBox(self, variable=self.tag_var, values=filtered_tags, fg_color="#2C2C2E", border_color="#3A3A3C", button_color="#3A3A3C", text_color="#FFFFFF", corner_radius=10, state="readonly", font=(self.app_font, 12))
         self.tag_combo.pack(fill="x", padx=24, pady=(4, 14))
         
-        ctk.CTkLabel(self, text="DATA", text_color="#8E8E93", font=("SF Pro Display", 11, "bold"), anchor="w").pack(fill="x", padx=24)
-        self.date_entry = ctk.CTkEntry(self, fg_color="#2C2C2E", border_color="#3A3A3C", text_color="#FFFFFF", corner_radius=10, placeholder_text="RRRR-MM-DD")
+        ctk.CTkLabel(self, text="DATA", text_color="#8E8E93", font=(self.app_font, 11, "bold"), anchor="w").pack(fill="x", padx=24)
+        self.date_entry = ctk.CTkEntry(self, fg_color="#2C2C2E", border_color="#3A3A3C", text_color="#FFFFFF", corner_radius=10, placeholder_text="RRRR-MM-DD", font=(self.app_font, 12))
         self.date_entry.pack(fill="x", padx=24, pady=(4, 14))
 
-        ctk.CTkLabel(self, text="NOTATKA", text_color="#8E8E93", font=("SF Pro Display", 11, "bold"), anchor="w").pack(fill="x", padx=24)
-        self.note_entry = ctk.CTkEntry(self, fg_color="#2C2C2E", border_color="#3A3A3C", text_color="#FFFFFF", corner_radius=10, placeholder_text="Opcjonalny opis transakcji...")
+        ctk.CTkLabel(self, text="NOTATKA", text_color="#8E8E93", font=(self.app_font, 11, "bold"), anchor="w").pack(fill="x", padx=24)
+        self.note_entry = ctk.CTkEntry(self, fg_color="#2C2C2E", border_color="#3A3A3C", text_color="#FFFFFF", corner_radius=10, placeholder_text="Opcjonalny opis transakcji...", font=(self.app_font, 12))
         self.note_entry.pack(fill="x", padx=24, pady=(4, 20))
 
-        self.save_btn = ctk.CTkButton(self, text="Dodaj wpis", fg_color="#FF3B30", hover_color="#D73229", font=("SF Pro Display", 14, "bold"), corner_radius=10, height=44, command=lambda: self._save(on_saved))
+        self.save_btn = ctk.CTkButton(self, text="Dodaj wpis", fg_color="#FF3B30", hover_color="#D73229", font=(self.app_font, 14, "bold"), corner_radius=10, height=44, command=lambda: self._save(on_saved))
         self.save_btn.pack(fill="x", padx=24, pady=10)
         
         self.bind('<Return>', lambda event: self._save(on_saved))
@@ -223,6 +227,7 @@ class TransferDialog(ctk.CTkToplevel):
     def __init__(self, parent, accounts, on_saved):
         super().__init__(parent)
         self.accounts = accounts
+        self.app_font = parent.db.get_font() if hasattr(parent, 'db') else "Segoe UI"
         
         self.title("Przelew środków")
         self.geometry("380x520")
@@ -232,34 +237,33 @@ class TransferDialog(ctk.CTkToplevel):
         self.focus_force()
         self.resizable(False, False)
 
-        ctk.CTkLabel(self, text="Przelew między kontami", text_color="#FFFFFF", font=("SF Pro Display", 20, "bold")).pack(pady=(20, 15))
+        ctk.CTkLabel(self, text="Przelew między kontami", text_color="#FFFFFF", font=(self.app_font, 20, "bold")).pack(pady=(20, 15))
 
-        ctk.CTkLabel(self, text="Z KONTA", text_color="#8E8E93", font=("SF Pro Display", 11, "bold"), anchor="w").pack(fill="x", padx=24)
+        ctk.CTkLabel(self, text="Z KONTA", text_color="#8E8E93", font=(self.app_font, 11, "bold"), anchor="w").pack(fill="x", padx=24)
         self.from_account_var = ctk.StringVar(value=accounts[0]['name'] if accounts else "")
-        self.from_account_combo = ctk.CTkComboBox(self, variable=self.from_account_var, values=[a['name'] for a in accounts], fg_color="#2C2C2E", border_color="#3A3A3C", button_color="#3A3A3C", text_color="#FFFFFF", corner_radius=10, state="readonly")
+        self.from_account_combo = ctk.CTkComboBox(self, variable=self.from_account_var, values=[a['name'] for a in accounts], fg_color="#2C2C2E", border_color="#3A3A3C", button_color="#3A3A3C", text_color="#FFFFFF", corner_radius=10, state="readonly", font=(self.app_font, 12))
         self.from_account_combo.pack(fill="x", padx=24, pady=(4, 14))
 
-        ctk.CTkLabel(self, text="NA KONTO", text_color="#8E8E93", font=("SF Pro Display", 11, "bold"), anchor="w").pack(fill="x", padx=24)
-        # Automatyczne ustawienie drugiego konta w kolejności, jeśli istnieje
+        ctk.CTkLabel(self, text="NA KONTO", text_color="#8E8E93", font=(self.app_font, 11, "bold"), anchor="w").pack(fill="x", padx=24)
         to_initial = accounts[1]['name'] if len(accounts) > 1 else accounts[0]['name']
         self.to_account_var = ctk.StringVar(value=to_initial)
-        self.to_account_combo = ctk.CTkComboBox(self, variable=self.to_account_var, values=[a['name'] for a in accounts], fg_color="#2C2C2E", border_color="#3A3A3C", button_color="#3A3A3C", text_color="#FFFFFF", corner_radius=10, state="readonly")
+        self.to_account_combo = ctk.CTkComboBox(self, variable=self.to_account_var, values=[a['name'] for a in accounts], fg_color="#2C2C2E", border_color="#3A3A3C", button_color="#3A3A3C", text_color="#FFFFFF", corner_radius=10, state="readonly", font=(self.app_font, 12))
         self.to_account_combo.pack(fill="x", padx=24, pady=(4, 14))
 
-        ctk.CTkLabel(self, text="KWOTA PRZELEWU", text_color="#8E8E93", font=("SF Pro Display", 11, "bold"), anchor="w").pack(fill="x", padx=24)
-        self.amount_entry = ctk.CTkEntry(self, fg_color="#2C2C2E", border_color="#8B5CF6", text_color="#FFFFFF", corner_radius=10, placeholder_text="0.00", font=("SF Pro Display", 16))
+        ctk.CTkLabel(self, text="KWOTA PRZELEWU", text_color="#8E8E93", font=(self.app_font, 11, "bold"), anchor="w").pack(fill="x", padx=24)
+        self.amount_entry = ctk.CTkEntry(self, fg_color="#2C2C2E", border_color="#8B5CF6", text_color="#FFFFFF", corner_radius=10, placeholder_text="0.00", font=(self.app_font, 16))
         self.amount_entry.pack(fill="x", padx=24, pady=(4, 14))
 
-        ctk.CTkLabel(self, text="DATA", text_color="#8E8E93", font=("SF Pro Display", 11, "bold"), anchor="w").pack(fill="x", padx=24)
-        self.date_entry = ctk.CTkEntry(self, fg_color="#2C2C2E", border_color="#3A3A3C", text_color="#FFFFFF", corner_radius=10, placeholder_text="RRRR-MM-DD")
+        ctk.CTkLabel(self, text="DATA", text_color="#8E8E93", font=(self.app_font, 11, "bold"), anchor="w").pack(fill="x", padx=24)
+        self.date_entry = ctk.CTkEntry(self, fg_color="#2C2C2E", border_color="#3A3A3C", text_color="#FFFFFF", corner_radius=10, placeholder_text="RRRR-MM-DD", font=(self.app_font, 12))
         self.date_entry.pack(fill="x", padx=24, pady=(4, 14))
         self.date_entry.insert(0, str(date.today()))
 
-        ctk.CTkLabel(self, text="NOTATKA", text_color="#8E8E93", font=("SF Pro Display", 11, "bold"), anchor="w").pack(fill="x", padx=24)
-        self.note_entry = ctk.CTkEntry(self, fg_color="#2C2C2E", border_color="#3A3A3C", text_color="#FFFFFF", corner_radius=10, placeholder_text="Opcjonalny opis...")
+        ctk.CTkLabel(self, text="NOTATKA", text_color="#8E8E93", font=(self.app_font, 11, "bold"), anchor="w").pack(fill="x", padx=24)
+        self.note_entry = ctk.CTkEntry(self, fg_color="#2C2C2E", border_color="#3A3A3C", text_color="#FFFFFF", corner_radius=10, placeholder_text="Opcjonalny opis...", font=(self.app_font, 12))
         self.note_entry.pack(fill="x", padx=24, pady=(4, 20))
 
-        self.save_btn = ctk.CTkButton(self, text="Wykonaj przelew", fg_color="#8B5CF6", hover_color="#7C3AED", font=("SF Pro Display", 14, "bold"), corner_radius=10, height=44, command=lambda: self._save(on_saved))
+        self.save_btn = ctk.CTkButton(self, text="Wykonaj przelew", fg_color="#8B5CF6", hover_color="#7C3AED", font=(self.app_font, 14, "bold"), corner_radius=10, height=44, command=lambda: self._save(on_saved))
         self.save_btn.pack(fill="x", padx=24, pady=10)
         
         self.bind('<Return>', lambda event: self._save(on_saved))
@@ -297,6 +301,8 @@ class TransferDialog(ctk.CTkToplevel):
 class AccountDetailsDialog(ctk.CTkToplevel):
     def __init__(self, parent, account, db, currency="zł"):
         super().__init__(parent)
+        self.app_font = parent.db.get_font() if hasattr(parent, 'db') else "Segoe UI"
+        
         self.title(f"Analityka: {account['name']}")
         self.geometry("460x620")
         self.configure(fg_color="#1C1C1E")
@@ -305,19 +311,19 @@ class AccountDetailsDialog(ctk.CTkToplevel):
         self.focus_force()
         self.resizable(False, False)
 
-        ctk.CTkLabel(self, text=account['name'].upper(), text_color="#8E8E93", font=("SF Pro Display", 12, "bold")).pack(pady=(22, 2))
-        ctk.CTkLabel(self, text=f"{account['balance']:.2f} {currency}", text_color="#FFFFFF", font=("SF Pro Display", 28, "bold")).pack(pady=(0, 15))
+        ctk.CTkLabel(self, text=account['name'].upper(), text_color="#8E8E93", font=(self.app_font, 12, "bold")).pack(pady=(22, 2))
+        ctk.CTkLabel(self, text=f"{account['balance']:.2f} {currency}", text_color="#FFFFFF", font=(self.app_font, 28, "bold")).pack(pady=(0, 15))
 
         stats = db.account_stats(account['id'])
         spent_stats = [s for s in stats if s['spent'] > 0]
 
         if not spent_stats:
-            ctk.CTkLabel(self, text="STRUKTURA WYDATKÓW", text_color="#8E8E93", font=("SF Pro Display", 11, "bold"), anchor="w").pack(fill="x", padx=24, pady=(10, 5))
+            ctk.CTkLabel(self, text="STRUKTURA WYDATKÓW", text_color="#8E8E93", font=(self.app_font, 11, "bold"), anchor="w").pack(fill="x", padx=24, pady=(10, 5))
             self.no_data_frame = ctk.CTkFrame(self, fg_color="#2C2C2E", corner_radius=12)
             self.no_data_frame.pack(fill="both", expand=True, padx=24, pady=10)
-            ctk.CTkLabel(self.no_data_frame, text="Brak wydatków na tym koncie.\nDodaj transakcję typu 'Wypłata',\naby wygenerować wykres graficzny.", text_color="#AEAEB2", font=("SF Pro Display", 13)).pack(expand=True, pady=20)
+            ctk.CTkLabel(self.no_data_frame, text="Brak wydatków na tym koncie.\nDodaj transakcję typu 'Wypłata',\naby wygenerować wykres graficzny.", text_color="#AEAEB2", font=(self.app_font, 13)).pack(expand=True, pady=20)
         else:
-            ctk.CTkLabel(self, text="STRUKTURA WYDATKÓW (PODZIAŁ NA TAGI)", text_color="#8E8E93", font=("SF Pro Display", 11, "bold"), anchor="w").pack(fill="x", padx=24, pady=(10, 5))
+            ctk.CTkLabel(self, text="STRUKTURA WYDATKÓW (PODZIAŁ NA TAGI)", text_color="#8E8E93", font=(self.app_font, 11, "bold"), anchor="w").pack(fill="x", padx=24, pady=(10, 5))
 
             tags = [s['tag'] for s in spent_stats]
             amounts = [s['spent'] for s in spent_stats]
@@ -334,7 +340,7 @@ class AccountDetailsDialog(ctk.CTkToplevel):
                 autopct='%1.0f%%', 
                 startangle=140, 
                 colors=ios_colors[:len(tags)],
-                textprops=dict(color="#FFFFFF", size=11, fontname="sans-serif"), 
+                textprops=dict(color="#FFFFFF", size=11, fontname=self.app_font), 
                 wedgeprops=dict(width=0.35, edgecolor='#1C1C1E', linewidth=2) 
             )
 
@@ -354,4 +360,4 @@ class AccountDetailsDialog(ctk.CTkToplevel):
             canvas_widget.pack(fill="both", expand=True, padx=24, pady=5)
             canvas.draw()
 
-        ctk.CTkButton(self, text="Gotowe", fg_color="#3A3A3C", hover_color="#48484A", text_color="#FFFFFF", font=("SF Pro Display", 14, "bold"), corner_radius=10, height=42, command=self.destroy).pack(fill="x", padx=24, pady=(10, 35))
+        ctk.CTkButton(self, text="Gotowe", fg_color="#3A3A3C", hover_color="#48484A", text_color="#FFFFFF", font=(self.app_font, 14, "bold"), corner_radius=10, height=42, command=self.destroy).pack(fill="x", padx=24, pady=(10, 35))

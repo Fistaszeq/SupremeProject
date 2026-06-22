@@ -53,6 +53,7 @@ class SimpleBudgetDB:
             )
             
             cur.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('currency', 'zł');")
+            cur.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('font', 'Segoe UI');")
             
             cur.execute("SELECT COUNT(*) FROM tags")
             if cur.fetchone()[0] == 0:
@@ -83,6 +84,17 @@ class SimpleBudgetDB:
         with self.conn:
             cur = self.conn.cursor()
             cur.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('currency', ?)", (currency,))
+
+    def get_font(self):
+        cur = self.conn.cursor()
+        cur.execute("SELECT value FROM settings WHERE key = 'font'")
+        row = cur.fetchone()
+        return row['value'] if row else "Segoe UI"
+
+    def set_font(self, font):
+        with self.conn:
+            cur = self.conn.cursor()
+            cur.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('font', ?)", (font,))
 
     def accounts(self):
         cur = self.conn.cursor()
