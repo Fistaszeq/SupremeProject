@@ -507,7 +507,7 @@ class SimpleBudgetApp(ctk.CTk):
                 #Menu rozwijane
                 def on_days_count_change(option):
                     self.days_count = int(option)
-                    ax_bar.set_title(f"Całkowite wydatki z ostatnich {option} dni", color="self.curr_text_color", fontsize=12, fontweight="bold", pad=10) #inaczej nie dziala
+                    ax_bar.set_title(f"Całkowite wydatki z ostatnich {option} dni", color=self.curr_text_color, fontsize=12, fontweight="bold", pad=10) #inaczej nie dziala
                     self.trigger_render()
 
                 days_count_menu_frame = ctk.CTkFrame(bar_chart_frame, fg_color="transparent")
